@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/auth/Login'
 import Dashboard from './pages/admin/Dashboard'
+import Users from './pages/admin/Users'
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth()
@@ -63,6 +64,11 @@ const AppRoutes = () => {
       <Route path="/admin" element={
         <ProtectedRoute allowedRoles={['ADMIN']}>
           <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/users" element={
+         <ProtectedRoute allowedRoles={['ADMIN']}>
+           <Users />
         </ProtectedRoute>
       } />
 
