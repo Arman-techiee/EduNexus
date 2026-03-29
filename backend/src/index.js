@@ -14,11 +14,13 @@ const authRoutes = require('./routes/auth.routes')
 const adminRoutes = require('./routes/admin.routes')
 const subjectRoutes = require('./routes/subject.routes')
 const attendanceRoutes = require('./routes/attendance.routes')
+const assignmentRoutes = require('./routes/assignment.routes')
 
 app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/subjects', subjectRoutes)
 app.use('/api/attendance', attendanceRoutes)
+app.use('/api/assignments', assignmentRoutes)
 
 app.get('/', (req, res) => {
   res.json({ message: 'EduNexus backend is running! 🚀' })
