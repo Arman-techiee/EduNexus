@@ -4,6 +4,7 @@ import Login from './pages/auth/Login'
 import Dashboard from './pages/admin/Dashboard'
 import Users from './pages/admin/Users'
 import Subjects from './pages/admin/Subjects'
+import Notices from './pages/admin/Notices'
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth()
@@ -75,6 +76,11 @@ const AppRoutes = () => {
       <Route path="/admin/subjects" element={
   <ProtectedRoute allowedRoles={['ADMIN']}>
     <Subjects />
+  </ProtectedRoute>
+} />
+<Route path="/admin/notices" element={
+  <ProtectedRoute allowedRoles={['ADMIN']}>
+    <Notices />
   </ProtectedRoute>
 } />
 
