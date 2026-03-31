@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import StudentLayout from '../../layouts/StudentLayout'
 import api from '../../utils/api'
 import { useAuth } from '../../context/AuthContext'
@@ -91,6 +92,21 @@ const StudentDashboard = () => {
           <StatCard title="Assignments" value={stats.totalAssignments} icon="📝" color="border-blue-500" />
           <StatCard title="Avg Attendance" value={stats.attendancePercentage} icon="✅" color="border-green-500" />
         </div>
+
+        <Link
+          to="/student/scan"
+          className="mb-8 block bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-2xl shadow-sm p-6 hover:shadow-md transition"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold">Scan Gate QR</h2>
+              <p className="text-sm text-purple-100 mt-1">
+                Open your camera directly from here on mobile phones or laptops to mark today&apos;s attendance.
+              </p>
+            </div>
+            <div className="text-5xl">📷</div>
+          </div>
+        </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 

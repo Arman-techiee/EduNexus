@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import StudentLayout from '../../layouts/StudentLayout'
 import api from '../../utils/api'
 
 const StudentAttendance = () => {
+  const location = useLocation()
   const [attendance, setAttendance] = useState([])
   const [summary, setSummary] = useState([])
   const [loading, setLoading] = useState(true)
@@ -33,6 +35,15 @@ const StudentAttendance = () => {
       stopScanner()
     }
   }, [])
+
+  useEffect(() => {
+    if (!scannerSupported) return
+
+    const shouldAutoStart = location.pathname === '/student/scan' || new URLSearchParams(location.search).get('scan') === '1'
+    if (shouldAutoStart) {
+      startScanner()
+    }
+  }, [location.pathname, location.search, scannerSupported])
 
   const fetchAttendance = async () => {
     try {
@@ -134,8 +145,12 @@ const StudentAttendance = () => {
     <StudentLayout>
       <div className="p-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">My Attendance</h1>
-          <p className="text-gray-500 text-sm mt-1">Track your attendance and scan the daily entry QR from your phone.</p>
+          <h1 className="text-2xl font-bold text-gray-800">{location.pathname === '/student/scan' ? 'Scan Gate QR' : 'My Attendance'}</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {location.pathname === '/student/scan'
+              ? 'Your camera opens here for mobile phones and laptops so you can scan the gate QR quickly.'
+              : 'Track your attendance and scan the daily entry QR from your phone.'}
+          </p>
         </div>
 
         {success && <div className="bg-green-50 text-green-600 px-4 py-3 rounded-lg mb-4 text-sm">{success}</div>}

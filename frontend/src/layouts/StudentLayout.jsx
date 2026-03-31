@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 
 const menuItems = [
   { path: '/student', label: 'Dashboard', icon: '📊' },
+  { path: '/student/scan', label: 'Scan QR', icon: '📷' },
   { path: '/student/subjects', label: 'My Subjects', icon: '📚' },
   { path: '/student/attendance', label: 'My Attendance', icon: '✅' },
   { path: '/student/assignments', label: 'Assignments', icon: '📝' },
