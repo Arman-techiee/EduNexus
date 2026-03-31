@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { protect, allowRoles } = require('../middleware/auth.middleware')
+const { uploadPdf } = require('../middleware/upload.middleware')
 const {
   createAssignment,
   getAllAssignments,
@@ -15,13 +16,13 @@ const {
 router.use(protect)
 
 // Instructor routes
-router.post('/', allowRoles('INSTRUCTOR'), createAssignment)
-router.put('/:id', allowRoles('INSTRUCTOR'), updateAssignment)
+router.post('/', allowRoles('INSTRUCTOR'), uploadPdf.single('questionPdf'), createAssignment)
+router.put('/:id', allowRoles('INSTRUCTOR'), uploadPdf.single('questionPdf'), updateAssignment)
 router.delete('/:id', allowRoles('INSTRUCTOR', 'ADMIN'), deleteAssignment)
 router.patch('/submissions/:submissionId/grade', allowRoles('INSTRUCTOR'), gradeSubmission)
 
 // Student routes
-router.post('/:id/submit', allowRoles('STUDENT'), submitAssignment)
+router.post('/:id/submit', allowRoles('STUDENT'), uploadPdf.single('answerPdf'), submitAssignment)
 router.get('/my-submissions', allowRoles('STUDENT'), getMySubmissions)
 
 // All roles

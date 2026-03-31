@@ -1,11 +1,26 @@
 const prisma = require('../utils/prisma')
 
+const buildUploadedFileUrl = (req, file) => {
+  if (!file) return undefined
+  return `/uploads/${file.filename}`
+}
+
 // ================================
 // CREATE ASSIGNMENT (Instructor)
 // ================================
 const createAssignment = async (req, res) => {
   try {
     const { title, description, subjectId, dueDate, totalMarks } = req.body
+    const questionPdfUrl = buildUploadedFileUrl(req, req.file)
+    const parsedTotalMarks = totalMarks ? parseInt(totalMarks, 10) : 100
+
+    if (!questionPdfUrl) {
+      return res.status(400).json({ message: 'Please upload the assignment question PDF' })
+    }
+
+    if (Number.isNaN(parsedTotalMarks) || parsedTotalMarks <= 0) {
+      return res.status(400).json({ message: 'Total marks must be a valid positive number' })
+    }
 
     const instructor = await prisma.instructor.findUnique({
       where: { userId: req.user.id }
@@ -27,10 +42,11 @@ const createAssignment = async (req, res) => {
       data: {
         title,
         description,
+        questionPdfUrl,
         subjectId,
         instructorId: instructor.id,
         dueDate: new Date(dueDate),
-        totalMarks: totalMarks || 100
+        totalMarks: parsedTotalMarks
       },
       include: {
         subject: { select: { name: true, code: true } },
@@ -124,10 +140,16 @@ const updateAssignment = async (req, res) => {
   try {
     const { id } = req.params
     const { title, description, dueDate, totalMarks } = req.body
+    const questionPdfUrl = buildUploadedFileUrl(req, req.file)
+    const parsedTotalMarks = totalMarks !== undefined ? parseInt(totalMarks, 10) : undefined
 
     const assignment = await prisma.assignment.findUnique({ where: { id } })
     if (!assignment) {
       return res.status(404).json({ message: 'Assignment not found' })
+    }
+
+    if (parsedTotalMarks !== undefined && (Number.isNaN(parsedTotalMarks) || parsedTotalMarks <= 0)) {
+      return res.status(400).json({ message: 'Total marks must be a valid positive number' })
     }
 
     const instructor = await prisma.instructor.findUnique({
@@ -143,8 +165,9 @@ const updateAssignment = async (req, res) => {
       data: {
         title,
         description,
+        questionPdfUrl: questionPdfUrl || assignment.questionPdfUrl,
         dueDate: dueDate ? new Date(dueDate) : undefined,
-        totalMarks
+        totalMarks: parsedTotalMarks
       }
     })
 
@@ -184,7 +207,8 @@ const deleteAssignment = async (req, res) => {
 const submitAssignment = async (req, res) => {
   try {
     const { id } = req.params
-    const { note, fileUrl } = req.body
+    const { note } = req.body
+    const fileUrl = buildUploadedFileUrl(req, req.file)
 
     const student = await prisma.student.findUnique({
       where: { userId: req.user.id }
@@ -206,6 +230,10 @@ const submitAssignment = async (req, res) => {
 
     if (existingSubmission) {
       return res.status(400).json({ message: 'You have already submitted this assignment' })
+    }
+
+    if (!fileUrl) {
+      return res.status(400).json({ message: 'Please upload your answer PDF' })
     }
 
     // Check if late

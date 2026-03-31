@@ -1,7 +1,22 @@
 import axios from 'axios'
 
+export const API_BASE_URL = 'http://localhost:5000/api'
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '')
+
+export const resolveFileUrl = (fileUrl) => {
+  if (!fileUrl) return ''
+
+  if (/^https?:\/\//i.test(fileUrl)) {
+    return fileUrl
+  }
+
+  return fileUrl.startsWith('/')
+    ? `${API_ORIGIN}${fileUrl}`
+    : `${API_ORIGIN}/${fileUrl}`
+}
+
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: API_BASE_URL,
 })
 
 // Automatically add token to every request

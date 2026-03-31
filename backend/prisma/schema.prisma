@@ -127,6 +127,7 @@ model Assignment {
   id           String   @id @default(uuid())
   title        String
   description  String
+  questionPdfUrl String?
   subjectId    String
   subject      Subject  @relation(fields: [subjectId], references: [id])
   instructorId String

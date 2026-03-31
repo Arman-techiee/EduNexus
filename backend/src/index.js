@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const dotenv = require('dotenv')
+const path = require('path')
 
 dotenv.config()
 
@@ -8,6 +9,7 @@ const app = express()
 
 app.use(cors())
 app.use(express.json())
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))
 
 // Routes
 const authRoutes = require('./routes/auth.routes')
@@ -32,6 +34,11 @@ app.use('/api/routines', routineRoutes)
 
 app.get('/', (req, res) => {
   res.json({ message: 'EduNexus backend is running! 🚀' })
+})
+
+app.use((error, _req, res, _next) => {
+  console.error(error)
+  res.status(400).json({ message: error.message || 'Something went wrong' })
 })
 
 const PORT = process.env.PORT || 5000

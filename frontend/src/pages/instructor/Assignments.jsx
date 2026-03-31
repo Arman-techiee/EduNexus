@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import InstructorLayout from '../../layouts/InstructorLayout'
-import api from '../../utils/api'
+import api, { resolveFileUrl } from '../../utils/api'
 
 const Assignments = () => {
   const [assignments, setAssignments] = useState([])
@@ -12,8 +12,10 @@ const Assignments = () => {
     title: '', description: '', subjectId: '',
     dueDate: '', totalMarks: 100
   })
+  const [questionPdf, setQuestionPdf] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [previewFile, setPreviewFile] = useState(null)
 
   useEffect(() => {
     fetchAssignments()
@@ -44,11 +46,24 @@ const Assignments = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (!questionPdf) {
+      setError('Please upload the question PDF')
+      return
+    }
     try {
-      await api.post('/assignments', form)
+      const payload = new FormData()
+      payload.append('title', form.title)
+      payload.append('description', form.description)
+      payload.append('subjectId', form.subjectId)
+      payload.append('dueDate', form.dueDate)
+      payload.append('totalMarks', form.totalMarks)
+      if (questionPdf) payload.append('questionPdf', questionPdf)
+
+      await api.post('/assignments', payload)
       setSuccess('Assignment created successfully!')
       setShowModal(false)
       setForm({ title: '', description: '', subjectId: '', dueDate: '', totalMarks: 100 })
+      setQuestionPdf(null)
       fetchAssignments()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
@@ -114,6 +129,18 @@ const Assignments = () => {
                       <span>📅 Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
                       <span>🎯 Total: {assignment.totalMarks} marks</span>
                       <span>📋 {assignment._count?.submissions} submissions</span>
+                      {assignment.questionPdfUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFile({
+                            title: `${assignment.title} - Question PDF`,
+                            url: resolveFileUrl(assignment.questionPdfUrl)
+                          })}
+                          className="text-green-600 font-medium hover:underline"
+                        >
+                          View Question PDF
+                        </button>
+                      )}
                     </div>
                   </div>
                   <button
@@ -177,6 +204,17 @@ const Assignments = () => {
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Question PDF</label>
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  required
+                  onChange={(e) => setQuestionPdf(e.target.files?.[0] || null)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm"
+                />
+                <p className="text-xs text-gray-400 mt-1">Upload the assignment question as a PDF.</p>
+              </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)}
                   className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50">
@@ -213,6 +251,18 @@ const Assignments = () => {
                     <div>
                       <p className="font-medium text-gray-800">{sub.student?.user?.name}</p>
                       <p className="text-sm text-gray-500 mt-1">{sub.note || 'No note'}</p>
+                      {sub.fileUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFile({
+                            title: `${sub.student?.user?.name || 'Student'} - Answer PDF`,
+                            url: resolveFileUrl(sub.fileUrl)
+                          })}
+                          className="text-sm text-green-600 hover:underline mt-2 inline-block"
+                        >
+                          View Answer PDF
+                        </button>
+                      )}
                       <p className="text-xs text-gray-400 mt-1">
                         Submitted: {new Date(sub.submittedAt).toLocaleDateString()}
                       </p>
@@ -254,6 +304,38 @@ const Assignments = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {previewFile && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl w-full max-w-5xl h-[85vh] shadow-xl flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-800">{previewFile.title}</h2>
+              <div className="flex items-center gap-3">
+                <a
+                  href={previewFile.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-green-600 hover:underline"
+                >
+                  Open in new tab
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewFile(null)}
+                  className="text-gray-400 hover:text-gray-600 text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <iframe
+              src={previewFile.url}
+              title={previewFile.title}
+              className="w-full flex-1"
+            />
           </div>
         </div>
       )}
