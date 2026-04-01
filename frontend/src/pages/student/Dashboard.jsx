@@ -25,7 +25,6 @@ const StudentDashboard = () => {
   })
   const [notices, setNotices] = useState([])
   const [attendance, setAttendance] = useState([])
-  const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -55,7 +54,6 @@ const StudentDashboard = () => {
 
       setNotices(noticesRes.data.notices.slice(0, 3))
       setAttendance(attendanceSummary)
-      setAssignments(assignmentsRes.data.assignments.slice(0, 3))
 
     } catch (error) {
       logger.error(error)
@@ -95,7 +93,7 @@ const StudentDashboard = () => {
 
         <Link
           to="/student/scan"
-          className="mb-8 block bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white rounded-2xl shadow-sm p-6 hover:shadow-md transition"
+          className="mb-8 block bg-linear-to-r from-purple-600 to-fuchsia-600 text-white rounded-2xl shadow-sm p-6 hover:shadow-md transition"
         >
           <div className="flex items-center justify-between gap-4">
             <div>
