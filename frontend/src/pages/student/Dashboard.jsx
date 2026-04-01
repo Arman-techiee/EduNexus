@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import StudentLayout from '../../layouts/StudentLayout'
 import api from '../../utils/api'
+import { useAuth } from '../../context/AuthContext'
 import logger from '../../utils/logger'
 const StatCard = ({ title, value, icon, color }) => (
   <div className={`bg-white rounded-2xl p-6 shadow-sm border-l-4 ${color}`}>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import GateLayout from '../../layouts/GateLayout'
+import api from '../../utils/api'
 import logger from '../../utils/logger'
 const GateDashboard = () => {
   const [dailyQrCode, setDailyQrCode] = useState('')
