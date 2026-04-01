@@ -255,7 +255,7 @@ const schemas = {
       body: z.object({
         name: z.string().trim().min(2).max(100),
         email: z.string().trim().email(),
-        studentId: z.string().trim().min(3).max(50),
+        studentId: z.string().trim().min(1).max(50),
         phone: optionalString(30),
         address: optionalString(255),
         department: z.string().trim().min(2).max(100),
@@ -292,7 +292,7 @@ const schemas = {
     createStudentFromApplication: {
       params: uuidParam,
       body: z.object({
-        studentId: z.string().trim().min(3).max(50),
+        studentId: z.string().trim().min(1).max(50),
         department: z.string().trim().min(2).max(100),
         semester: z.coerce.number().int().min(1).max(12),
         section: optionalString(20)

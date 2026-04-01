@@ -2,6 +2,10 @@ const prisma = require('../utils/prisma')
 const { getPagination } = require('../utils/pagination')
 const logger = require('../utils/logger')
 const { ensureDepartmentExists } = require('./department.controller')
+const {
+  enrollMatchingStudentsInSubject,
+  syncMatchingStudentsForSubject
+} = require('../utils/enrollment')
 
 const buildSubjectVisibilityFilter = async (user, filters = {}) => {
   if (user.role === 'INSTRUCTOR') {
@@ -104,23 +108,11 @@ const createSubject = async (req, res) => {
       include: subjectListInclude
     })
 
-    const suggestedStudents = await prisma.student.findMany({
-      where: {
-        semester,
-        ...(department ? { department } : {})
-      },
-      select: { id: true }
+    await enrollMatchingStudentsInSubject({
+      subjectId: subject.id,
+      semester,
+      department: normalizedDepartment
     })
-
-    if (suggestedStudents.length > 0) {
-      await prisma.subjectEnrollment.createMany({
-        data: suggestedStudents.map((student) => ({
-          subjectId: subject.id,
-          studentId: student.id
-        })),
-        skipDuplicates: true
-      })
-    }
 
     res.status(201).json({
       message: 'Subject created successfully!',
@@ -246,6 +238,12 @@ const updateSubject = async (req, res) => {
       where: { id },
       data: { name, description, semester, department: normalizedDepartment, instructorId },
       include: subjectListInclude
+    })
+
+    await syncMatchingStudentsForSubject({
+      subjectId: updatedSubject.id,
+      semester: updatedSubject.semester,
+      department: updatedSubject.department
     })
 
     res.json({

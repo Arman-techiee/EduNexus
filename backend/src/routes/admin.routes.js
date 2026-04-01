@@ -9,6 +9,7 @@ const {
   getStudentApplications,
   updateStudentApplicationStatus,
   createStudentFromApplication,
+  deleteStudentApplication,
   createCoordinator,
   createGatekeeper,
   createInstructor,
@@ -25,6 +26,7 @@ router.get('/users/:id', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.ad
 router.get('/student-applications', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.getStudentApplications), getStudentApplications)
 router.patch('/student-applications/:id/status', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.updateStudentApplicationStatus), updateStudentApplicationStatus)
 router.post('/student-applications/:id/create-account', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.createStudentFromApplication), createStudentFromApplication)
+router.delete('/student-applications/:id', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.studentApplicationId), deleteStudentApplication)
 router.post('/users/coordinator', allowRoles('ADMIN'), validate(schemas.admin.createCoordinator), createCoordinator)
 router.post('/users/gatekeeper', allowRoles('ADMIN'), validate(schemas.admin.createGatekeeper), createGatekeeper)
 router.post('/users/instructor', allowRoles('ADMIN'), validate(schemas.admin.createInstructor), createInstructor)

@@ -33,6 +33,74 @@ const enrollStudentInMatchingSubjects = async ({ studentId, semester, department
   }
 }
 
+const getMatchingStudentFilter = (semester, department) => ({
+  semester,
+  user: { isActive: true },
+  ...(department ? { department } : {})
+})
+
+const enrollMatchingStudentsInSubject = async ({ subjectId, semester, department }) => {
+  const matchingStudents = await prisma.student.findMany({
+    where: getMatchingStudentFilter(semester, department),
+    select: { id: true }
+  })
+
+  if (matchingStudents.length === 0) {
+    return { enrolledCount: 0, studentIds: [] }
+  }
+
+  await prisma.subjectEnrollment.createMany({
+    data: matchingStudents.map((student) => ({
+      subjectId,
+      studentId: student.id
+    })),
+    skipDuplicates: true
+  })
+
+  return {
+    enrolledCount: matchingStudents.length,
+    studentIds: matchingStudents.map((student) => student.id)
+  }
+}
+
+const syncMatchingStudentsForSubject = async ({ subjectId, semester, department }) => {
+  const matchingStudents = await prisma.student.findMany({
+    where: getMatchingStudentFilter(semester, department),
+    select: { id: true }
+  })
+
+  const matchingStudentIds = matchingStudents.map((student) => student.id)
+
+  await prisma.$transaction([
+    prisma.subjectEnrollment.deleteMany({
+      where: {
+        subjectId,
+        ...(matchingStudentIds.length > 0
+          ? { studentId: { notIn: matchingStudentIds } }
+          : {})
+      }
+    }),
+    ...(matchingStudentIds.length > 0
+      ? [
+          prisma.subjectEnrollment.createMany({
+            data: matchingStudentIds.map((studentId) => ({
+              subjectId,
+              studentId
+            })),
+            skipDuplicates: true
+          })
+        ]
+      : [])
+  ])
+
+  return {
+    enrolledCount: matchingStudentIds.length,
+    studentIds: matchingStudentIds
+  }
+}
+
 module.exports = {
-  enrollStudentInMatchingSubjects
+  enrollStudentInMatchingSubjects,
+  enrollMatchingStudentsInSubject,
+  syncMatchingStudentsForSubject
 }

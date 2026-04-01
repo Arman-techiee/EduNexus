@@ -19,6 +19,9 @@ const StudentApplications = () => {
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
   const [creatingAccount, setCreatingAccount] = useState(false)
+  const [deletingApplication, setDeletingApplication] = useState(false)
+  const [departments, setDepartments] = useState([])
+  const [applicationToDelete, setApplicationToDelete] = useState(null)
   const [accountForm, setAccountForm] = useState({
     studentId: '',
     department: '',
@@ -29,6 +32,10 @@ const StudentApplications = () => {
   useEffect(() => {
     fetchApplications()
   }, [page, filterStatus])
+
+  useEffect(() => {
+    fetchDepartments()
+  }, [])
 
   const fetchApplications = async () => {
     try {
@@ -45,11 +52,24 @@ const StudentApplications = () => {
     }
   }
 
+  const fetchDepartments = async () => {
+    try {
+      const res = await api.get('/departments')
+      setDepartments(res.data.departments || [])
+    } catch (requestError) {
+      setError(getFriendlyErrorMessage(requestError, 'Unable to load departments right now.'))
+    }
+  }
+
   const openApplication = (application) => {
+    const matchingDepartment = departments.find((department) => (
+      department.name === application.preferredDepartment || department.code === application.preferredDepartment
+    ))
+
     setSelectedApplication(application)
     setAccountForm({
       studentId: '',
-      department: application.preferredDepartment || '',
+      department: matchingDepartment?.name || '',
       semester: '1',
       section: ''
     })
@@ -68,8 +88,17 @@ const StudentApplications = () => {
 
   const createAccount = async () => {
     if (!selectedApplication) return
+    if (!accountForm.studentId.trim()) {
+      setError('Please enter the institution student ID before creating the account.')
+      return
+    }
+    if (!accountForm.department.trim()) {
+      setError('Please select a valid department before creating the account.')
+      return
+    }
     try {
       setCreatingAccount(true)
+      setError('')
       const res = await api.post(`/admin/student-applications/${selectedApplication.id}/create-account`, {
         studentId: accountForm.studentId,
         department: accountForm.department,
@@ -83,6 +112,26 @@ const StudentApplications = () => {
       setError(getFriendlyErrorMessage(requestError, 'Unable to create the student account right now.'))
     } finally {
       setCreatingAccount(false)
+    }
+  }
+
+  const deleteApplication = async () => {
+    if (!applicationToDelete) return
+
+    try {
+      setDeletingApplication(true)
+      setError('')
+      await api.delete(`/admin/student-applications/${applicationToDelete.id}`)
+      setSuccess('Student application deleted successfully.')
+      if (selectedApplication?.id === applicationToDelete.id) {
+        setSelectedApplication(null)
+      }
+      setApplicationToDelete(null)
+      fetchApplications()
+    } catch (requestError) {
+      setError(getFriendlyErrorMessage(requestError, 'Unable to delete the student application right now.'))
+    } finally {
+      setDeletingApplication(false)
     }
   }
 
@@ -174,6 +223,9 @@ const StudentApplications = () => {
                                 Mark Reviewed
                               </button>
                             ) : null}
+                            <button type="button" onClick={() => setApplicationToDelete(application)} className="rounded-lg bg-red-50 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-100">
+                              Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -208,21 +260,63 @@ const StudentApplications = () => {
             {selectedApplication.status !== 'CONVERTED' ? (
               <div className="space-y-3 rounded-xl border p-4">
                 <h3 className="font-semibold text-gray-800">Create Student Account</h3>
+                {error ? <Alert type="error" message={error} /> : null}
                 <input value={accountForm.studentId} onChange={(e) => setAccountForm((current) => ({ ...current, studentId: e.target.value }))} placeholder="Institution Student ID" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
-                <input value={accountForm.department} onChange={(e) => setAccountForm((current) => ({ ...current, department: e.target.value }))} placeholder="Department" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
+                <select value={accountForm.department} onChange={(e) => setAccountForm((current) => ({ ...current, department: e.target.value }))} className="w-full rounded-lg border border-gray-300 px-4 py-2">
+                  <option value="">Select Department</option>
+                  {departments.map((department) => (
+                    <option key={department.id} value={department.name}>
+                      {department.name}
+                    </option>
+                  ))}
+                </select>
                 <div className="grid grid-cols-2 gap-3">
-                  <input value={accountForm.semester} onChange={(e) => setAccountForm((current) => ({ ...current, semester: e.target.value }))} placeholder="Semester" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
+                  <input value={accountForm.semester} disabled className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-gray-500" />
                   <input value={accountForm.section} onChange={(e) => setAccountForm((current) => ({ ...current, section: e.target.value.toUpperCase() }))} placeholder="Section" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
                 </div>
                 <button type="button" disabled={creatingAccount} onClick={createAccount} className="w-full rounded-lg bg-blue-600 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50">
                   {creatingAccount ? 'Creating Account...' : 'Create Student Account'}
                 </button>
+                <button type="button" onClick={() => setApplicationToDelete(selectedApplication)} className="w-full rounded-lg bg-red-50 py-2 font-medium text-red-600 hover:bg-red-100">
+                  Delete Application
+                </button>
               </div>
             ) : (
-              <div className="rounded-xl bg-green-50 p-4 text-sm text-green-700">
-                This application has already been converted into a student account.
+              <div className="space-y-3 rounded-xl border p-4">
+                <div className="rounded-xl bg-green-50 p-4 text-sm text-green-700">
+                  This application has already been converted into a student account.
+                </div>
+                <button type="button" onClick={() => setApplicationToDelete(selectedApplication)} className="w-full rounded-lg bg-red-50 py-2 font-medium text-red-600 hover:bg-red-100">
+                  Delete Application Record
+                </button>
               </div>
             )}
+          </div>
+        </Modal>
+      ) : null}
+
+      {applicationToDelete ? (
+        <Modal title="Delete Student Application" onClose={() => setApplicationToDelete(null)}>
+          <div className="space-y-4 text-sm text-gray-600">
+              <p>
+                Delete the application for <span className="font-medium text-gray-800">{applicationToDelete.fullName}</span>?
+              </p>
+              <p>
+                This should only be used for duplicate, test, or useless submissions.
+              </p>
+              {applicationToDelete.status === 'CONVERTED' ? (
+                <p>
+                  This will delete only the application record. The linked student account will remain in the system.
+                </p>
+              ) : null}
+              <div className="flex gap-3">
+              <button type="button" onClick={() => setApplicationToDelete(null)} className="flex-1 rounded-lg border border-gray-300 py-2 font-medium text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button type="button" disabled={deletingApplication} onClick={deleteApplication} className="flex-1 rounded-lg bg-red-600 py-2 font-medium text-white hover:bg-red-700 disabled:opacity-50">
+                {deletingApplication ? 'Deleting...' : 'Delete Application'}
+              </button>
+            </div>
           </div>
         </Modal>
       ) : null}

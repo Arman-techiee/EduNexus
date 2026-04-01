@@ -695,12 +695,48 @@ const createStudentFromApplication = async (req, res) => {
   }
 }
 
+const deleteStudentApplication = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const application = await prisma.studentApplication.findUnique({
+      where: { id }
+    })
+
+    if (!application) {
+      return res.status(404).json({ message: 'Student application not found' })
+    }
+
+    await prisma.studentApplication.delete({
+      where: { id }
+    })
+
+    res.json({ message: 'Student application deleted successfully!' })
+
+    await recordAuditLog({
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      action: 'STUDENT_APPLICATION_DELETED',
+      entityType: 'StudentApplication',
+      entityId: id,
+      metadata: {
+        email: application.email,
+        status: application.status,
+        linkedUserId: application.linkedUserId
+      }
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
 module.exports = {
   getAllUsers,
   getUserById,
   getStudentApplications,
   updateStudentApplicationStatus,
   createStudentFromApplication,
+  deleteStudentApplication,
   createGatekeeper,
   createCoordinator,
   createInstructor,
