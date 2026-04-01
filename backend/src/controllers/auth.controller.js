@@ -56,6 +56,53 @@ const getResetTokenExpiry = () => {
   return expiresAt
 }
 
+const getProfileSelect = () => ({
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  phone: true,
+  address: true,
+  avatar: true,
+  createdAt: true,
+  mustChangePassword: true,
+  profileCompleted: true,
+  student: {
+    select: {
+      id: true,
+      rollNumber: true,
+      semester: true,
+      section: true,
+      department: true,
+      guardianName: true,
+      guardianPhone: true,
+      fatherName: true,
+      motherName: true,
+      fatherPhone: true,
+      motherPhone: true,
+      bloodGroup: true,
+      localGuardianName: true,
+      localGuardianAddress: true,
+      localGuardianPhone: true,
+      permanentAddress: true,
+      temporaryAddress: true,
+      dateOfBirth: true
+    }
+  },
+  instructor: {
+    select: {
+      id: true,
+      department: true
+    }
+  },
+  coordinator: {
+    select: {
+      id: true,
+      department: true
+    }
+  }
+})
+
 // ================================
 // REGISTER
 // ================================
@@ -104,6 +151,95 @@ const register = async (req, res) => {
       message: 'User registered successfully!',
       token,
       user: buildAuthUser(user)
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const submitStudentIntake = async (req, res) => {
+  try {
+    const {
+      fullName,
+      email,
+      phone,
+      fatherName,
+      motherName,
+      fatherPhone,
+      motherPhone,
+      bloodGroup,
+      localGuardianName,
+      localGuardianAddress,
+      localGuardianPhone,
+      permanentAddress,
+      temporaryAddress,
+      dateOfBirth,
+      preferredDepartment
+    } = req.body
+
+    const existingApplication = await prisma.studentApplication.findUnique({
+      where: { email }
+    })
+
+    if (existingApplication && existingApplication.status !== 'CONVERTED') {
+      return res.status(400).json({ message: 'An application with this email has already been submitted.' })
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    })
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'An account already exists with this email address.' })
+    }
+
+    await prisma.studentApplication.upsert({
+      where: { email },
+      update: {
+        fullName,
+        phone,
+        fatherName,
+        motherName,
+        fatherPhone,
+        motherPhone,
+        bloodGroup,
+        localGuardianName,
+        localGuardianAddress,
+        localGuardianPhone,
+        permanentAddress,
+        temporaryAddress,
+        dateOfBirth: new Date(dateOfBirth),
+        preferredDepartment,
+        preferredSemester: 1,
+        preferredSection: null,
+        status: 'PENDING',
+        reviewedAt: null,
+        reviewedBy: null,
+        linkedUserId: null
+      },
+      create: {
+        fullName,
+        email,
+        phone,
+        fatherName,
+        motherName,
+        fatherPhone,
+        motherPhone,
+        bloodGroup,
+        localGuardianName,
+        localGuardianAddress,
+        localGuardianPhone,
+        permanentAddress,
+        temporaryAddress,
+        dateOfBirth: new Date(dateOfBirth),
+        preferredDepartment,
+        preferredSemester: 1,
+        preferredSection: null
+      }
+    })
+
+    res.status(201).json({
+      message: 'Your details have been submitted successfully. The institution can now review them and create your student account.'
     })
   } catch (error) {
     res.internalError(error)
@@ -159,35 +295,76 @@ const getMe = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        phone: true,
-        address: true,
-        avatar: true,
-        createdAt: true,
-        mustChangePassword: true,
-        profileCompleted: true,
-        student: {
-          select: {
-            rollNumber: true,
-            semester: true,
-            section: true,
-            department: true,
-            guardianName: true,
-            guardianPhone: true,
-            dateOfBirth: true
-          }
-        }
-      }
+      select: getProfileSelect()
     })
 
     res.json({ user })
   } catch (error) {
     logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong' })
+  }
+}
+
+const updateProfile = async (req, res) => {
+  try {
+    const {
+      phone,
+      address,
+      fatherName,
+      motherName,
+      fatherPhone,
+      motherPhone,
+      bloodGroup,
+      localGuardianName,
+      localGuardianAddress,
+      localGuardianPhone,
+      permanentAddress,
+      temporaryAddress,
+      dateOfBirth,
+      section
+    } = req.body
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        phone: phone ?? undefined,
+        address: address ?? temporaryAddress ?? undefined
+      }
+    })
+
+    if (req.user.role === 'STUDENT') {
+      await prisma.student.update({
+        where: { userId: req.user.id },
+        data: {
+          guardianName: fatherName ?? undefined,
+          guardianPhone: fatherPhone ?? undefined,
+          fatherName: fatherName ?? undefined,
+          motherName: motherName ?? undefined,
+          fatherPhone: fatherPhone ?? undefined,
+          motherPhone: motherPhone ?? undefined,
+          bloodGroup: bloodGroup ?? undefined,
+          localGuardianName: localGuardianName ?? undefined,
+          localGuardianAddress: localGuardianAddress ?? undefined,
+          localGuardianPhone: localGuardianPhone ?? undefined,
+          permanentAddress: permanentAddress ?? undefined,
+          temporaryAddress: temporaryAddress ?? address ?? undefined,
+          section: section ?? undefined,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined
+        }
+      })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: getProfileSelect()
+    })
+
+    res.json({
+      message: 'Profile updated successfully!',
+      user
+    })
+  } catch (error) {
+    res.internalError(error)
   }
 }
 
@@ -239,11 +416,17 @@ const completeProfile = async (req, res) => {
     }
 
     const {
-      name,
       phone,
-      address,
-      guardianName,
-      guardianPhone,
+      fatherName,
+      motherName,
+      fatherPhone,
+      motherPhone,
+      bloodGroup,
+      localGuardianName,
+      localGuardianAddress,
+      localGuardianPhone,
+      permanentAddress,
+      temporaryAddress,
       dateOfBirth,
       section
     } = req.body
@@ -257,23 +440,32 @@ const completeProfile = async (req, res) => {
     }
 
     const [updatedUser] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: req.user.id },
-        data: {
-          name,
-          phone,
-          address,
-          profileCompleted: true
-        }
-      }),
-      prisma.student.update({
-        where: { userId: req.user.id },
-        data: {
-          guardianName,
-          guardianPhone,
-          section,
-          dateOfBirth: new Date(dateOfBirth)
-        }
+        prisma.user.update({
+          where: { id: req.user.id },
+          data: {
+            phone,
+            address: temporaryAddress,
+            profileCompleted: true
+          }
+        }),
+        prisma.student.update({
+          where: { userId: req.user.id },
+          data: {
+            guardianName: fatherName,
+            guardianPhone: fatherPhone,
+            fatherName,
+            motherName,
+            fatherPhone,
+            motherPhone,
+            bloodGroup,
+            localGuardianName,
+            localGuardianAddress,
+            localGuardianPhone,
+            permanentAddress,
+            temporaryAddress,
+            section,
+            dateOfBirth: new Date(dateOfBirth)
+          }
       })
     ])
 
@@ -443,8 +635,10 @@ const logout = async (req, res) => {
 
 module.exports = {
   register,
+  submitStudentIntake,
   login,
   getMe,
+  updateProfile,
   changePassword,
   completeProfile,
   forgotPassword,

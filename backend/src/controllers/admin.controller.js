@@ -522,9 +522,185 @@ const deleteUser = async (req, res) => {
   }
 }
 
+const getStudentApplications = async (req, res) => {
+  try {
+    const { status } = req.query
+    const { page, limit, skip } = getPagination(req.query)
+    const filters = {}
+
+    if (status) {
+      filters.status = status
+    }
+
+    const [applications, total] = await Promise.all([
+      prisma.studentApplication.findMany({
+        where: filters,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.studentApplication.count({ where: filters })
+    ])
+
+    res.json({ applications, total, page, limit })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const updateStudentApplicationStatus = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+
+    const application = await prisma.studentApplication.update({
+      where: { id },
+      data: {
+        status,
+        reviewedAt: new Date(),
+        reviewedBy: req.user.id
+      }
+    })
+
+    res.json({
+      message: 'Application status updated successfully!',
+      application
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const createStudentFromApplication = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { studentId, department, semester, section } = req.body
+    const normalizedStudentId = studentId.trim().toUpperCase()
+    const normalizedDepartment = department.trim()
+
+    const application = await prisma.studentApplication.findUnique({
+      where: { id }
+    })
+
+    if (!application) {
+      return res.status(404).json({ message: 'Student application not found' })
+    }
+
+    if (application.linkedUserId || application.status === 'CONVERTED') {
+      return res.status(400).json({ message: 'A student account has already been created from this application' })
+    }
+
+    const validDepartment = await ensureDepartmentExists(normalizedDepartment)
+    if (!validDepartment) {
+      return res.status(400).json({ message: 'Please select a valid department' })
+    }
+
+    const [existingUser, existingStudent] = await Promise.all([
+      prisma.user.findUnique({ where: { email: application.email.toLowerCase() } }),
+      prisma.student.findUnique({ where: { rollNumber: normalizedStudentId } })
+    ])
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'An account already exists with the application email address' })
+    }
+
+    if (existingStudent) {
+      return res.status(400).json({ message: 'Student ID already exists' })
+    }
+
+    const hashedPassword = await bcrypt.hash(DEFAULT_STUDENT_PASSWORD, 10)
+
+    const user = await prisma.user.create({
+      data: {
+        name: application.fullName,
+        email: application.email.toLowerCase(),
+        password: hashedPassword,
+        role: 'STUDENT',
+        phone: application.phone,
+        address: application.temporaryAddress,
+        mustChangePassword: true,
+        profileCompleted: true,
+        student: {
+          create: {
+            rollNumber: normalizedStudentId,
+            semester,
+            section: section || application.preferredSection,
+            department: normalizedDepartment,
+            guardianName: application.fatherName,
+            guardianPhone: application.fatherPhone,
+            fatherName: application.fatherName,
+            motherName: application.motherName,
+            fatherPhone: application.fatherPhone,
+            motherPhone: application.motherPhone,
+            bloodGroup: application.bloodGroup,
+            localGuardianName: application.localGuardianName,
+            localGuardianAddress: application.localGuardianAddress,
+            localGuardianPhone: application.localGuardianPhone,
+            permanentAddress: application.permanentAddress,
+            temporaryAddress: application.temporaryAddress,
+            dateOfBirth: application.dateOfBirth
+          }
+        }
+      },
+      include: { student: true }
+    })
+
+    await prisma.studentApplication.update({
+      where: { id },
+      data: {
+        status: 'CONVERTED',
+        reviewedAt: new Date(),
+        reviewedBy: req.user.id,
+        linkedUserId: user.id,
+        preferredDepartment: normalizedDepartment,
+        preferredSemester: semester,
+        preferredSection: section || application.preferredSection
+      }
+    })
+
+    await enrollStudentInMatchingSubjects({
+      studentId: user.student.id,
+      semester: user.student.semester,
+      department: user.student.department
+    })
+
+    res.status(201).json({
+      message: 'Student account created from application successfully!',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        rollNumber: user.student.rollNumber,
+        semester: user.student.semester,
+        defaultPassword: process.env.NODE_ENV !== 'production' ? DEFAULT_STUDENT_PASSWORD : undefined
+      }
+    })
+
+    await recordAuditLog({
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      action: 'USER_CREATED_FROM_APPLICATION',
+      entityType: 'StudentApplication',
+      entityId: id,
+      metadata: {
+        linkedUserId: user.id,
+        department: normalizedDepartment,
+        semester,
+        section: section || application.preferredSection
+      }
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
 module.exports = {
   getAllUsers,
   getUserById,
+  getStudentApplications,
+  updateStudentApplicationStatus,
+  createStudentFromApplication,
   createGatekeeper,
   createCoordinator,
   createInstructor,

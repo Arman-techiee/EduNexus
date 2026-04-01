@@ -26,6 +26,7 @@ const dayOfWeekEnum = z.enum(['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURS
 const attendanceStatusEnum = z.enum(['PRESENT', 'ABSENT', 'LATE'])
 const examTypeEnum = z.enum(['INTERNAL', 'MIDTERM', 'FINAL', 'PRACTICAL'])
 const exportFormatEnum = z.enum(['pdf', 'xlsx'])
+const applicationStatusEnum = z.enum(['PENDING', 'REVIEWED', 'CONVERTED'])
 
 const strongPasswordSchema = z.string()
   .min(8, 'Password must be at least 8 characters')
@@ -44,13 +45,54 @@ const userBaseSchema = z.object({
 })
 
 const selfProfileBody = z.object({
-  name: z.string().trim().min(2).max(100),
   phone: z.string().trim().min(7).max(30),
-  address: z.string().trim().min(5).max(255),
-  guardianName: z.string().trim().min(2).max(100),
-  guardianPhone: z.string().trim().min(7).max(30),
+  fatherName: z.string().trim().min(2).max(100),
+  motherName: z.string().trim().min(2).max(100),
+  fatherPhone: z.string().trim().min(7).max(30),
+  motherPhone: z.string().trim().min(7).max(30),
+  bloodGroup: optionalString(20),
+  localGuardianName: z.string().trim().min(2).max(100),
+  localGuardianAddress: z.string().trim().min(5).max(255),
+  localGuardianPhone: z.string().trim().min(7).max(30),
+  permanentAddress: z.string().trim().min(5).max(255),
+  temporaryAddress: z.string().trim().min(5).max(255),
   dateOfBirth: z.string().trim().min(1),
   section: z.string().trim().min(1).max(20)
+})
+
+const studentApplicationBody = z.object({
+  fullName: z.string().trim().min(2).max(100),
+  email: z.string().trim().email(),
+  phone: z.string().trim().min(7).max(30),
+  fatherName: z.string().trim().min(2).max(100),
+  motherName: z.string().trim().min(2).max(100),
+  fatherPhone: z.string().trim().min(7).max(30),
+  motherPhone: z.string().trim().min(7).max(30),
+  bloodGroup: optionalString(20),
+  localGuardianName: z.string().trim().min(2).max(100),
+  localGuardianAddress: z.string().trim().min(5).max(255),
+  localGuardianPhone: z.string().trim().min(7).max(30),
+  permanentAddress: z.string().trim().min(5).max(255),
+  temporaryAddress: z.string().trim().min(5).max(255),
+  dateOfBirth: z.string().trim().min(1),
+  preferredDepartment: z.string().trim().min(2).max(100)
+})
+
+const profileUpdateBody = z.object({
+  phone: optionalString(30),
+  address: optionalString(255),
+  fatherName: optionalString(100),
+  motherName: optionalString(100),
+  fatherPhone: optionalString(30),
+  motherPhone: optionalString(30),
+  bloodGroup: optionalString(20),
+  localGuardianName: optionalString(100),
+  localGuardianAddress: optionalString(255),
+  localGuardianPhone: optionalString(30),
+  permanentAddress: optionalString(255),
+  temporaryAddress: optionalString(255),
+  dateOfBirth: optionalString(50),
+  section: optionalString(20)
 })
 
 const createNoticeBody = z.object({
@@ -173,6 +215,9 @@ const schemas = {
         email: z.string().trim().email()
       })
     },
+    studentIntake: {
+      body: studentApplicationBody
+    },
     resetPassword: {
       body: z.object({
         token: z.string().trim().min(10),
@@ -181,6 +226,9 @@ const schemas = {
     },
     completeProfile: {
       body: selfProfileBody
+    },
+    updateProfile: {
+      body: profileUpdateBody
     }
   },
   admin: {
@@ -223,6 +271,30 @@ const schemas = {
         address: optionalString(255),
         department: optionalString(100),
         semester: z.coerce.number().int().min(1).max(8).optional(),
+        section: optionalString(20)
+      })
+    },
+    getStudentApplications: {
+      query: z.object({
+        ...paginationQuery,
+        status: applicationStatusEnum.optional()
+      })
+    },
+    studentApplicationId: {
+      params: uuidParam
+    },
+    updateStudentApplicationStatus: {
+      params: uuidParam,
+      body: z.object({
+        status: applicationStatusEnum
+      })
+    },
+    createStudentFromApplication: {
+      params: uuidParam,
+      body: z.object({
+        studentId: z.string().trim().min(3).max(50),
+        department: z.string().trim().min(2).max(100),
+        semester: z.coerce.number().int().min(1).max(12),
         section: optionalString(20)
       })
     }

@@ -22,21 +22,25 @@ const AdminLayout = ({ children }) => {
       ? [
           { path: `${basePath}`, label: 'Dashboard', icon: '📊' },
           { path: `${basePath}/users`, label: 'Students', icon: '👥' },
+          { path: `${basePath}/applications`, label: 'Admissions', icon: '🧾' },
           { path: `${basePath}/subjects`, label: 'Subjects', icon: '📚' },
           { path: `${basePath}/attendance`, label: 'Attendance', icon: '✅' },
           { path: `${basePath}/assignments`, label: 'Assignments', icon: '📝' },
           { path: `${basePath}/marks`, label: 'Exam Results', icon: '🎯' },
           { path: `${basePath}/notices`, label: 'Notices', icon: '📢' },
           { path: `${basePath}/materials`, label: 'Materials', icon: '📁' },
-          { path: `${basePath}/routine`, label: 'Routine', icon: '🗓️' }
+          { path: `${basePath}/routine`, label: 'Routine', icon: '🗓️' },
+          { path: `${basePath}/profile`, label: 'Profile', icon: '🙍' }
         ]
       : [
           { path: `${basePath}`, label: 'Dashboard', icon: '📊' },
           { path: `${basePath}/users`, label: 'Users', icon: '👥' },
+          { path: `${basePath}/applications`, label: 'Admissions', icon: '🧾' },
           { path: `${basePath}/departments`, label: 'Departments', icon: '🏛️' },
           { path: `${basePath}/subjects`, label: 'Subjects', icon: '📚' },
           { path: `${basePath}/notices`, label: 'Notices', icon: '📢' },
-          { path: `${basePath}/routine`, label: 'Routine', icon: '🗓️' }
+          { path: `${basePath}/routine`, label: 'Routine', icon: '🗓️' },
+          { path: `${basePath}/profile`, label: 'Profile', icon: '🙍' }
         ]
   ), [basePath, isCoordinator])
 

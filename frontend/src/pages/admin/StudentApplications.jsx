@@ -1,0 +1,233 @@
+import { useEffect, useState } from 'react'
+import AdminLayout from '../../layouts/AdminLayout'
+import Alert from '../../components/Alert'
+import EmptyState from '../../components/EmptyState'
+import LoadingSkeleton from '../../components/LoadingSkeleton'
+import Modal from '../../components/Modal'
+import Pagination from '../../components/Pagination'
+import api from '../../utils/api'
+import { getFriendlyErrorMessage } from '../../utils/errors'
+
+const StudentApplications = () => {
+  const [applications, setApplications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [limit] = useState(10)
+  const [total, setTotal] = useState(0)
+  const [filterStatus, setFilterStatus] = useState('')
+  const [selectedApplication, setSelectedApplication] = useState(null)
+  const [success, setSuccess] = useState('')
+  const [error, setError] = useState('')
+  const [creatingAccount, setCreatingAccount] = useState(false)
+  const [accountForm, setAccountForm] = useState({
+    studentId: '',
+    department: '',
+    semester: '1',
+    section: ''
+  })
+
+  useEffect(() => {
+    fetchApplications()
+  }, [page, filterStatus])
+
+  const fetchApplications = async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+      if (filterStatus) params.set('status', filterStatus)
+      const res = await api.get(`/admin/student-applications?${params.toString()}`)
+      setApplications(res.data.applications)
+      setTotal(res.data.total)
+    } catch (requestError) {
+      setError(getFriendlyErrorMessage(requestError, 'Unable to load student applications right now.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const openApplication = (application) => {
+    setSelectedApplication(application)
+    setAccountForm({
+      studentId: '',
+      department: application.preferredDepartment || '',
+      semester: '1',
+      section: ''
+    })
+    setError('')
+  }
+
+  const markReviewed = async (applicationId) => {
+    try {
+      await api.patch(`/admin/student-applications/${applicationId}/status`, { status: 'REVIEWED' })
+      setSuccess('Application marked as reviewed.')
+      fetchApplications()
+    } catch (requestError) {
+      setError(getFriendlyErrorMessage(requestError, 'Unable to update the application status right now.'))
+    }
+  }
+
+  const createAccount = async () => {
+    if (!selectedApplication) return
+    try {
+      setCreatingAccount(true)
+      const res = await api.post(`/admin/student-applications/${selectedApplication.id}/create-account`, {
+        studentId: accountForm.studentId,
+        department: accountForm.department,
+        semester: parseInt(accountForm.semester, 10),
+        section: accountForm.section
+      })
+      setSuccess(`Student account created. Login email: ${res.data.user.email}${res.data.user.defaultPassword ? ` | Default password: ${res.data.user.defaultPassword}` : ''}`)
+      setSelectedApplication(null)
+      fetchApplications()
+    } catch (requestError) {
+      setError(getFriendlyErrorMessage(requestError, 'Unable to create the student account right now.'))
+    } finally {
+      setCreatingAccount(false)
+    }
+  }
+
+  return (
+    <AdminLayout>
+      <div className="p-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Student Intake Forms</h1>
+            <p className="mt-1 text-sm text-gray-500">Review student-submitted admission details and create portal accounts from approved forms.</p>
+          </div>
+          <a href="/student-intake" target="_blank" rel="noreferrer" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            Open Public Form
+          </a>
+        </div>
+
+        <Alert type="success" message={success} />
+        <Alert type="error" message={error} />
+
+        <div className="mb-6 flex gap-3">
+          {['', 'PENDING', 'REVIEWED', 'CONVERTED'].map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => {
+                setFilterStatus(status)
+                setPage(1)
+              }}
+              className={`rounded-lg px-4 py-2 text-sm font-medium ${filterStatus === status ? 'bg-blue-600 text-white' : 'border bg-white text-gray-600 hover:bg-gray-50'}`}
+            >
+              {status || 'All'}
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="p-6">
+              <LoadingSkeleton rows={5} itemClassName="h-20" />
+            </div>
+          ) : applications.length === 0 ? (
+            <div className="p-6">
+              <EmptyState icon="🧾" title="No student forms yet" description="Open the public form link and submit a sample application to test the admissions workflow." />
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[980px]">
+                  <thead className="bg-gray-50">
+                    <tr className="text-left text-sm text-gray-500">
+                      <th className="px-6 py-4">Student</th>
+                      <th className="px-6 py-4">Email</th>
+                      <th className="px-6 py-4">Requested</th>
+                      <th className="px-6 py-4">Submitted</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {applications.map((application) => (
+                      <tr key={application.id} className="border-t hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <p className="font-medium text-gray-800">{application.fullName}</p>
+                          <p className="mt-1 text-xs text-gray-500">{application.phone}</p>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">{application.email}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {application.preferredDepartment} · First Semester Intake
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">{new Date(application.createdAt).toLocaleDateString()}</td>
+                        <td className="px-6 py-4">
+                          <span className={`rounded-full px-2 py-1 text-xs font-medium ${
+                            application.status === 'CONVERTED'
+                              ? 'bg-green-100 text-green-700'
+                              : application.status === 'REVIEWED'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {application.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => openApplication(application)} className="rounded-lg bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100">
+                              View
+                            </button>
+                            {application.status === 'PENDING' ? (
+                              <button type="button" onClick={() => markReviewed(application.id)} className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100">
+                                Mark Reviewed
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
+            </>
+          )}
+        </div>
+      </div>
+
+      {selectedApplication ? (
+        <Modal title="Student Application Details" onClose={() => setSelectedApplication(null)}>
+          <div className="space-y-4 text-sm text-gray-600">
+            <div className="rounded-xl bg-gray-50 p-4">
+              <p><span className="font-medium text-gray-800">Full Name:</span> {selectedApplication.fullName}</p>
+              <p><span className="font-medium text-gray-800">Email:</span> {selectedApplication.email}</p>
+              <p><span className="font-medium text-gray-800">Phone:</span> {selectedApplication.phone}</p>
+              <p><span className="font-medium text-gray-800">Father:</span> {selectedApplication.fatherName} ({selectedApplication.fatherPhone})</p>
+              <p><span className="font-medium text-gray-800">Mother:</span> {selectedApplication.motherName} ({selectedApplication.motherPhone})</p>
+              <p><span className="font-medium text-gray-800">Blood Group:</span> {selectedApplication.bloodGroup || 'Not provided'}</p>
+              <p><span className="font-medium text-gray-800">Local Guardian:</span> {selectedApplication.localGuardianName} ({selectedApplication.localGuardianPhone})</p>
+              <p><span className="font-medium text-gray-800">Local Guardian Address:</span> {selectedApplication.localGuardianAddress}</p>
+              <p><span className="font-medium text-gray-800">Permanent Address:</span> {selectedApplication.permanentAddress}</p>
+              <p><span className="font-medium text-gray-800">Temporary Address:</span> {selectedApplication.temporaryAddress}</p>
+              <p><span className="font-medium text-gray-800">Date of Birth:</span> {new Date(selectedApplication.dateOfBirth).toLocaleDateString()}</p>
+              <p><span className="font-medium text-gray-800">Requested Class:</span> {selectedApplication.preferredDepartment} · First Semester Intake</p>
+            </div>
+
+            {selectedApplication.status !== 'CONVERTED' ? (
+              <div className="space-y-3 rounded-xl border p-4">
+                <h3 className="font-semibold text-gray-800">Create Student Account</h3>
+                <input value={accountForm.studentId} onChange={(e) => setAccountForm((current) => ({ ...current, studentId: e.target.value }))} placeholder="Institution Student ID" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
+                <input value={accountForm.department} onChange={(e) => setAccountForm((current) => ({ ...current, department: e.target.value }))} placeholder="Department" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
+                <div className="grid grid-cols-2 gap-3">
+                  <input value={accountForm.semester} onChange={(e) => setAccountForm((current) => ({ ...current, semester: e.target.value }))} placeholder="Semester" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
+                  <input value={accountForm.section} onChange={(e) => setAccountForm((current) => ({ ...current, section: e.target.value.toUpperCase() }))} placeholder="Section" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
+                </div>
+                <button type="button" disabled={creatingAccount} onClick={createAccount} className="w-full rounded-lg bg-blue-600 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                  {creatingAccount ? 'Creating Account...' : 'Create Student Account'}
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-xl bg-green-50 p-4 text-sm text-green-700">
+                This application has already been converted into a student account.
+              </div>
+            )}
+          </div>
+        </Modal>
+      ) : null}
+    </AdminLayout>
+  )
+}
+
+export default StudentApplications

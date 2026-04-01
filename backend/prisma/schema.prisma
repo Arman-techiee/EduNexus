@@ -50,6 +50,12 @@ enum Role {
   STUDENT
 }
 
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  CONVERTED
+}
+
 // ================================
 // PROFILES
 // ================================
@@ -92,6 +98,16 @@ model Student {
   department   String?
   guardianName String?
   guardianPhone String?
+  fatherName   String?
+  motherName   String?
+  fatherPhone  String?
+  motherPhone  String?
+  bloodGroup   String?
+  localGuardianName String?
+  localGuardianAddress String?
+  localGuardianPhone String?
+  permanentAddress String?
+  temporaryAddress String?
   dateOfBirth  DateTime?
   enrolledAt   DateTime @default(now())
   attendances  Attendance[]
@@ -327,6 +343,37 @@ model Department {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model StudentApplication {
+  id                  String            @id @default(uuid())
+  fullName            String
+  email               String            @unique
+  phone               String
+  fatherName          String
+  motherName          String
+  fatherPhone         String
+  motherPhone         String
+  bloodGroup          String?
+  localGuardianName   String
+  localGuardianAddress String
+  localGuardianPhone  String
+  permanentAddress    String
+  temporaryAddress    String
+  dateOfBirth         DateTime
+  preferredDepartment String
+  preferredSemester   Int
+  preferredSection    String?
+  status              ApplicationStatus @default(PENDING)
+  reviewedAt          DateTime?
+  reviewedBy          String?
+  linkedUserId        String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([status])
+  @@index([preferredDepartment, preferredSemester])
+  @@index([createdAt])
 }
 
 model AuditLog {

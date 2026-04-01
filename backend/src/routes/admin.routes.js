@@ -6,6 +6,9 @@ const { schemas } = require('../validators/schemas')
 const {
   getAllUsers,
   getUserById,
+  getStudentApplications,
+  updateStudentApplicationStatus,
+  createStudentFromApplication,
   createCoordinator,
   createGatekeeper,
   createInstructor,
@@ -19,6 +22,9 @@ router.use(protect)
 
 router.get('/users', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.getAllUsers), getAllUsers)
 router.get('/users/:id', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.userId), getUserById)
+router.get('/student-applications', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.getStudentApplications), getStudentApplications)
+router.patch('/student-applications/:id/status', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.updateStudentApplicationStatus), updateStudentApplicationStatus)
+router.post('/student-applications/:id/create-account', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.createStudentFromApplication), createStudentFromApplication)
 router.post('/users/coordinator', allowRoles('ADMIN'), validate(schemas.admin.createCoordinator), createCoordinator)
 router.post('/users/gatekeeper', allowRoles('ADMIN'), validate(schemas.admin.createGatekeeper), createGatekeeper)
 router.post('/users/instructor', allowRoles('ADMIN'), validate(schemas.admin.createInstructor), createInstructor)

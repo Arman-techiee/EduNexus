@@ -4,10 +4,12 @@ import Login from './pages/auth/Login'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
 import ChangePassword from './pages/auth/ChangePassword'
+import StudentIntakeForm from './pages/auth/StudentIntakeForm'
 
 // Admin pages
 import AdminDashboard from './pages/admin/Dashboard'
 import Users from './pages/admin/Users'
+import StudentApplications from './pages/admin/StudentApplications'
 import Departments from './pages/admin/Departments'
 import Subjects from './pages/admin/Subjects'
 import Notices from './pages/admin/Notices'
@@ -33,7 +35,7 @@ import StudentMarks from './pages/student/Marks'
 import StudentNotices from './pages/student/Notices'
 import StudentMaterials from './pages/student/Materials'
 import StudentRoutine from './pages/student/Routine'
-import ProfileSetup from './pages/student/ProfileSetup'
+import ProfilePage from './pages/shared/ProfilePage'
 import { getHomeRouteForUser } from './utils/auth'
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -67,6 +69,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={!user ? <Login /> : <Navigate to={homeRoute} />} />
+      <Route path="/student-intake" element={<StudentIntakeForm />} />
       <Route path="/forgot-password" element={!user ? <ForgotPassword /> : <Navigate to={homeRoute} />} />
       <Route path="/reset-password" element={!user ? <ResetPassword /> : <Navigate to={homeRoute} />} />
       <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
@@ -74,6 +77,7 @@ const AppRoutes = () => {
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN', 'COORDINATOR']}><Users /></ProtectedRoute>} />
+      <Route path="/admin/applications" element={<ProtectedRoute allowedRoles={['ADMIN', 'COORDINATOR']}><StudentApplications /></ProtectedRoute>} />
       <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={['ADMIN']}><Departments /></ProtectedRoute>} />
       <Route path="/admin/subjects" element={<ProtectedRoute allowedRoles={['ADMIN', 'COORDINATOR']}><Subjects /></ProtectedRoute>} />
       <Route path="/admin/notices" element={<ProtectedRoute allowedRoles={['ADMIN', 'COORDINATOR']}><Notices /></ProtectedRoute>} />
@@ -82,6 +86,7 @@ const AppRoutes = () => {
       {/* Coordinator Routes */}
       <Route path="/coordinator" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/coordinator/users" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Users /></ProtectedRoute>} />
+      <Route path="/coordinator/applications" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><StudentApplications /></ProtectedRoute>} />
       <Route path="/coordinator/subjects" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Subjects /></ProtectedRoute>} />
       <Route path="/coordinator/notices" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Notices /></ProtectedRoute>} />
       <Route path="/coordinator/routine" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><AdminRoutine /></ProtectedRoute>} />
@@ -89,6 +94,7 @@ const AppRoutes = () => {
       <Route path="/coordinator/assignments" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Assignments /></ProtectedRoute>} />
       <Route path="/coordinator/marks" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Marks /></ProtectedRoute>} />
       <Route path="/coordinator/materials" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><InstructorMaterials /></ProtectedRoute>} />
+      <Route path="/coordinator/profile" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><ProfilePage /></ProtectedRoute>} />
 
       {/* Gatekeeper Routes */}
       <Route path="/gatekeeper" element={<ProtectedRoute allowedRoles={['GATEKEEPER']}><GateDashboard /></ProtectedRoute>} />
@@ -103,10 +109,11 @@ const AppRoutes = () => {
       <Route path="/instructor/notices" element={<ProtectedRoute allowedRoles={['INSTRUCTOR']}><InstructorNotices /></ProtectedRoute>} />
       <Route path="/instructor/materials" element={<ProtectedRoute allowedRoles={['INSTRUCTOR']}><InstructorMaterials /></ProtectedRoute>} />
       <Route path="/instructor/routine" element={<ProtectedRoute allowedRoles={['INSTRUCTOR']}><InstructorRoutine /></ProtectedRoute>} />
+      <Route path="/instructor/profile" element={<ProtectedRoute allowedRoles={['INSTRUCTOR']}><ProfilePage /></ProtectedRoute>} />
 
       {/* Student Routes */}
       <Route path="/student" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentDashboard /></ProtectedRoute>} />
-      <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['STUDENT']}><ProfileSetup /></ProtectedRoute>} />
+      <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['STUDENT']}><ProfilePage /></ProtectedRoute>} />
       <Route path="/student/scan" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentAttendance /></ProtectedRoute>} />
       <Route path="/student/subjects" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentSubjects /></ProtectedRoute>} />
       <Route path="/student/attendance" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentAttendance /></ProtectedRoute>} />
@@ -115,6 +122,7 @@ const AppRoutes = () => {
       <Route path="/student/notices" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentNotices /></ProtectedRoute>} />
       <Route path="/student/materials" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentMaterials /></ProtectedRoute>} />
       <Route path="/student/routine" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentRoutine /></ProtectedRoute>} />
+      <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={['ADMIN']}><ProfilePage /></ProtectedRoute>} />
       
       <Route path="*" element={<Navigate to={user ? homeRoute : '/login'} />} />
     </Routes>

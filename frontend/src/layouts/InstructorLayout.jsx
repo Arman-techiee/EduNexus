@@ -33,7 +33,9 @@ const InstructorLayout = ({ children }) => {
           { path: `${basePath}/attendance`, label: 'Attendance', icon: '✅' },
           { path: `${basePath}/assignments`, label: 'Assignments', icon: '📝' },
           { path: `${basePath}/marks`, label: 'Exam Results', icon: '🎯' },
-          { path: `${basePath}/materials`, label: 'Materials', icon: '📁' }
+          { path: `${basePath}/materials`, label: 'Materials', icon: '📁' },
+          { path: `${basePath}/applications`, label: 'Admissions', icon: '🧾' },
+          { path: `${basePath}/profile`, label: 'Profile', icon: '🙍' }
         ]
       : [
           { path: `${basePath}`, label: 'Dashboard', icon: '📊' },
@@ -43,7 +45,8 @@ const InstructorLayout = ({ children }) => {
           { path: `${basePath}/marks`, label: 'Exam Results', icon: '🎯' },
           { path: `${basePath}/notices`, label: 'Notices', icon: '📢' },
           { path: `${basePath}/materials`, label: 'Materials', icon: '📁' },
-          { path: `${basePath}/routine`, label: 'Routine', icon: '🗓️' }
+          { path: `${basePath}/routine`, label: 'Routine', icon: '🗓️' },
+          { path: `${basePath}/profile`, label: 'Profile', icon: '🙍' }
         ]
   ), [basePath, isCoordinator])
 

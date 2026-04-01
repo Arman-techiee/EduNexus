@@ -2,10 +2,12 @@ const express = require('express')
 const router = express.Router()
 const {
   register,
+  submitStudentIntake,
   login,
   refresh,
   logout,
   getMe,
+  updateProfile,
   changePassword,
   completeProfile,
   forgotPassword,
@@ -17,12 +19,14 @@ const { validate } = require('../middleware/validate.middleware')
 const { schemas } = require('../validators/schemas')
 
 router.post('/register', authLimiter, validate(schemas.auth.register), register)
+router.post('/student-intake', authLimiter, validate(schemas.auth.studentIntake), submitStudentIntake)
 router.post('/login', authLimiter, validate(schemas.auth.login), login)
 router.post('/forgot-password', authLimiter, validate(schemas.auth.forgotPassword), forgotPassword)
 router.post('/reset-password', authLimiter, validate(schemas.auth.resetPassword), resetPassword)
 router.post('/refresh', authLimiter, refresh)
 router.post('/logout', logout)
 router.get('/me', protect, getMe)
+router.patch('/profile', protect, validate(schemas.auth.updateProfile), updateProfile)
 router.post('/change-password', protect, validate(schemas.auth.changePassword), changePassword)
 router.patch('/complete-profile', protect, allowRoles('STUDENT'), validate(schemas.auth.completeProfile), completeProfile)
 
