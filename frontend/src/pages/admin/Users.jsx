@@ -5,7 +5,18 @@ import LoadingSpinner from '../../components/LoadingSpinner'
 import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
+import useForm from '../../hooks/useForm'
 import api from '../../utils/api'
+
+const initialUserValues = {
+  name: '',
+  email: '',
+  password: '',
+  phone: '',
+  department: '',
+  semester: '1',
+  section: ''
+}
 
 const Users = () => {
   const [users, setUsers] = useState([])
@@ -16,13 +27,35 @@ const Users = () => {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [modalType, setModalType] = useState('instructor')
-  const [form, setForm] = useState({
-    name: '', email: '', password: '',
-    phone: '', department: '', semester: 1, section: ''
-  })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [filterRole, setFilterRole] = useState('')
+  const validateUserForm = (values) => {
+    const validationErrors = {}
+
+    if (!values.name.trim()) validationErrors.name = 'Name is required'
+    if (!values.email.trim()) validationErrors.email = 'Email is required'
+    else if (!/\S+@\S+\.\S+/.test(values.email)) validationErrors.email = 'Enter a valid email address'
+    if (!values.password) validationErrors.password = 'Password is required'
+    else if (values.password.length < 6) validationErrors.password = 'Password must be at least 6 characters'
+
+    if (modalType !== 'gatekeeper' && !values.department.trim()) {
+      validationErrors.department = 'Department is required'
+    }
+
+    if (modalType === 'student') {
+      const semester = parseInt(values.semester, 10)
+      if (Number.isNaN(semester) || semester < 1 || semester > 8) {
+        validationErrors.semester = 'Semester must be between 1 and 8'
+      }
+      if (!values.section.trim()) {
+        validationErrors.section = 'Section is required'
+      }
+    }
+
+    return validationErrors
+  }
+  const { values, errors, handleChange, handleSubmit, setValues, setErrors } = useForm(initialUserValues, validateUserForm)
 
   useEffect(() => {
     fetchUsers()
@@ -68,7 +101,6 @@ const Users = () => {
   }
 
   const handleCreateUser = async (e) => {
-    e.preventDefault()
     setError('')
     try {
       const endpoint = modalType === 'instructor'
@@ -76,10 +108,14 @@ const Users = () => {
         : modalType === 'gatekeeper'
           ? '/admin/users/gatekeeper'
         : '/admin/users/student'
-      await api.post(endpoint, form)
+      await api.post(endpoint, {
+        ...values,
+        semester: modalType === 'student' ? parseInt(values.semester, 10) : undefined
+      })
       setSuccess(`${modalType} created successfully!`)
       setShowModal(false)
-      setForm({ name: '', email: '', password: '', phone: '', department: '', semester: 1, section: '' })
+      setValues(initialUserValues)
+      setErrors({})
       fetchUsers()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
@@ -113,7 +149,8 @@ const Users = () => {
   const openModal = (type) => {
     setModalType(type)
     setError('')
-    setForm({ name: '', email: '', password: '', phone: '', department: '', semester: 1, section: '' })
+    setValues(initialUserValues)
+    setErrors({})
     setShowModal(true)
   }
 
@@ -243,73 +280,88 @@ const Users = () => {
         >
             <Alert type="error" message={error} />
 
-            <form onSubmit={handleCreateUser} className="space-y-4">
+            <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4">
               <input
+                name="name"
                 type="text"
                 placeholder="Full Name"
                 required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                value={values.name}
+                onChange={handleChange}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {errors.name && <p className="text-xs text-red-600 -mt-2">{errors.name}</p>}
               <input
+                name="email"
                 type="email"
                 placeholder="Email"
                 required
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                value={values.email}
+                onChange={handleChange}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {errors.email && <p className="text-xs text-red-600 -mt-2">{errors.email}</p>}
               <input
+                name="password"
                 type="password"
                 placeholder="Password"
                 required
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                value={values.password}
+                onChange={handleChange}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {errors.password && <p className="text-xs text-red-600 -mt-2">{errors.password}</p>}
               <input
+                name="phone"
                 type="text"
                 placeholder="Phone (optional)"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                value={values.phone}
+                onChange={handleChange}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {modalType !== 'gatekeeper' && (
-                <select
-                  value={form.department}
-                  onChange={(e) => setForm({ ...form, department: e.target.value })}
+                <>
+                  <select
+                  name="department"
+                  value={values.department}
+                  onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((department) => (
-                    <option key={department.id} value={department.name}>
-                      {department.name} ({department.code})
-                    </option>
-                  ))}
-                </select>
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map((department) => (
+                      <option key={department.id} value={department.name}>
+                        {department.name} ({department.code})
+                      </option>
+                    ))}
+                  </select>
+                  {errors.department && <p className="text-xs text-red-600 -mt-2">{errors.department}</p>}
+                </>
               )}
 
               {modalType === 'student' && (
                 <div className="flex gap-3">
                   <input
+                    name="semester"
                     type="number"
                     placeholder="Semester"
                     min="1"
                     max="8"
-                    value={form.semester}
-                    onChange={(e) => setForm({ ...form, semester: parseInt(e.target.value) })}
+                    value={values.semester}
+                    onChange={handleChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <input
+                    name="section"
                     type="text"
                     placeholder="Section (A/B/C)"
-                    value={form.section}
-                    onChange={(e) => setForm({ ...form, section: e.target.value })}
+                    value={values.section}
+                    onChange={handleChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               )}
+              {modalType === 'student' && errors.semester && <p className="text-xs text-red-600 -mt-2">{errors.semester}</p>}
+              {modalType === 'student' && errors.section && <p className="text-xs text-red-600 -mt-2">{errors.section}</p>}
 
               <div className="flex gap-3 pt-2">
                 <button

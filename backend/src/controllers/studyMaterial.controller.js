@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma')
+const logger = require('../utils/logger')
 
 const buildUploadedFileUrl = (req, file) => {
   if (!file) return undefined
@@ -54,7 +55,7 @@ const createMaterial = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -78,7 +79,7 @@ const getMaterialsBySubject = async (req, res) => {
     res.json({ total: materials.length, materials })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -99,7 +100,7 @@ const getAllMaterials = async (req, res) => {
     res.json({ total: materials.length, materials })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -121,7 +122,7 @@ const deleteMaterial = async (req, res) => {
     res.json({ message: 'Material deleted successfully!' })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -132,3 +133,4 @@ module.exports = {
   getAllMaterials,
   deleteMaterial
 }
+

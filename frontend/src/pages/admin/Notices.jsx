@@ -5,7 +5,10 @@ import LoadingSpinner from '../../components/LoadingSpinner'
 import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
+import useForm from '../../hooks/useForm'
 import api from '../../utils/api'
+
+const initialNoticeValues = { title: '', content: '', type: 'GENERAL' }
 
 const Notices = () => {
   const [notices, setNotices] = useState([])
@@ -15,9 +18,17 @@ const Notices = () => {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editNotice, setEditNotice] = useState(null)
-  const [form, setForm] = useState({ title: '', content: '', type: 'GENERAL' })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const validateNotice = (values) => {
+    const validationErrors = {}
+    if (!values.title.trim()) validationErrors.title = 'Title is required'
+    else if (values.title.trim().length < 3) validationErrors.title = 'Title must be at least 3 characters'
+    if (!values.content.trim()) validationErrors.content = 'Content is required'
+    else if (values.content.trim().length < 10) validationErrors.content = 'Content must be at least 10 characters'
+    return validationErrors
+  }
+  const { values, errors, handleChange, handleSubmit, setValues, setErrors } = useForm(initialNoticeValues, validateNotice)
 
   useEffect(() => { fetchNotices() }, [page])
 
@@ -34,20 +45,20 @@ const Notices = () => {
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const saveNotice = async (formValues) => {
     setError('')
     try {
       if (editNotice) {
-        await api.put(`/notices/${editNotice.id}`, form)
+        await api.put(`/notices/${editNotice.id}`, formValues)
         setSuccess('Notice updated successfully!')
       } else {
-        await api.post('/notices', form)
+        await api.post('/notices', formValues)
         setSuccess('Notice created successfully!')
       }
       setShowModal(false)
       setEditNotice(null)
-      setForm({ title: '', content: '', type: 'GENERAL' })
+      setValues(initialNoticeValues)
+      setErrors({})
       fetchNotices()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
@@ -69,14 +80,16 @@ const Notices = () => {
 
   const openEditModal = (notice) => {
     setEditNotice(notice)
-    setForm({ title: notice.title, content: notice.content, type: notice.type })
+    setValues({ title: notice.title, content: notice.content, type: notice.type })
+    setErrors({})
     setError('')
     setShowModal(true)
   }
 
   const openCreateModal = () => {
     setEditNotice(null)
-    setForm({ title: '', content: '', type: 'GENERAL' })
+    setValues(initialNoticeValues)
+    setErrors({})
     setError('')
     setShowModal(true)
   }
@@ -159,26 +172,31 @@ const Notices = () => {
         <Modal title={editNotice ? 'Edit Notice' : 'Post Notice'} onClose={() => setShowModal(false)}>
             <Alert type="error" message={error} />
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit(saveNotice)} className="space-y-4">
               <input
+                name="title"
                 type="text"
                 placeholder="Notice Title"
                 required
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                value={values.title}
+                onChange={handleChange}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {errors.title && <p className="text-xs text-red-600 -mt-2">{errors.title}</p>}
               <textarea
+                name="content"
                 placeholder="Notice content..."
                 required
                 rows={4}
-                value={form.content}
-                onChange={(e) => setForm({ ...form, content: e.target.value })}
+                value={values.content}
+                onChange={handleChange}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {errors.content && <p className="text-xs text-red-600 -mt-2">{errors.content}</p>}
               <select
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                name="type"
+                value={values.type}
+                onChange={handleChange}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="GENERAL">General</option>

@@ -1,23 +1,44 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Alert from '../../components/Alert'
 import { useAuth } from '../../context/AuthContext'
+import useForm from '../../hooks/useForm'
 import api from '../../utils/api'
 
+const validateLogin = (values) => {
+  const errors = {}
+
+  if (!values.email.trim()) {
+    errors.email = 'Email is required'
+  } else if (!/\S+@\S+\.\S+/.test(values.email)) {
+    errors.email = 'Enter a valid email address'
+  }
+
+  if (!values.password) {
+    errors.password = 'Password is required'
+  } else if (values.password.length < 6) {
+    errors.password = 'Password must be at least 6 characters'
+  }
+
+  return errors
+}
+
 const Login = () => {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const { values, errors, handleChange, handleSubmit } = useForm({
+    email: '',
+    password: ''
+  }, validateLogin)
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
+  const handleLogin = async (formValues) => {
     setLoading(true)
     setError('')
 
     try {
-      const res = await api.post('/auth/login', { email, password })
+      const res = await api.post('/auth/login', formValues)
       const { user, token } = res.data
       login(user, token)
 
@@ -45,26 +66,24 @@ const Login = () => {
         </div>
 
         {/* Error */}
-        {error && (
-          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm">
-            {error}
-          </div>
-        )}
+        <Alert type="error" message={error} />
 
         {/* Form */}
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSubmit(handleLogin)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
             <input
+              name="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={values.email}
+              onChange={handleChange}
               placeholder="Enter your email"
               required
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
           </div>
 
           <div>
@@ -72,13 +91,15 @@ const Login = () => {
               Password
             </label>
             <input
+              name="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={values.password}
+              onChange={handleChange}
               placeholder="Enter your password"
               required
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
           </div>
 
           <button

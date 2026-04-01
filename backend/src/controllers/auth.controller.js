@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const prisma = require('../utils/prisma')
 const { enrollStudentInMatchingSubjects } = require('../utils/enrollment')
+const logger = require('../utils/logger')
 
 // ================================
 // REGISTER
@@ -79,7 +80,7 @@ const register = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -131,7 +132,7 @@ const login = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -158,7 +159,7 @@ const getMe = async (req, res) => {
     res.json({ user })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong' })
   }
 }

@@ -2,6 +2,7 @@ const prisma = require('../utils/prisma')
 const bcrypt = require('bcryptjs')
 const { enrollStudentInMatchingSubjects } = require('../utils/enrollment')
 const { getPagination } = require('../utils/pagination')
+const logger = require('../utils/logger')
 const { ensureDepartmentExists } = require('./department.controller')
 
 // ================================
@@ -41,7 +42,7 @@ const getAllUsers = async (req, res) => {
     res.json({ total, page, limit, users })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -78,7 +79,7 @@ const getUserById = async (req, res) => {
     res.json({ user })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -118,7 +119,7 @@ const createGatekeeper = async (req, res) => {
       }
     })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -172,7 +173,7 @@ const createInstructor = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -239,7 +240,7 @@ const createStudent = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -293,7 +294,7 @@ const updateUser = async (req, res) => {
     res.json({ message: 'User updated successfully!', user: updatedUser })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -325,7 +326,7 @@ const toggleUserStatus = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -360,7 +361,7 @@ const deleteUser = async (req, res) => {
     res.json({ message: 'User deleted successfully!' })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -375,3 +376,4 @@ module.exports = {
   toggleUserStatus,
   deleteUser
 }
+

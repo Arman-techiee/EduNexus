@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma')
 const { getPagination } = require('../utils/pagination')
+const logger = require('../utils/logger')
 const { ensureDepartmentExists } = require('./department.controller')
 
 const buildSubjectVisibilityFilter = async (user, filters = {}) => {
@@ -125,7 +126,7 @@ const createSubject = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -158,7 +159,7 @@ const getAllSubjects = async (req, res) => {
     res.json({ total, page, limit, subjects })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -216,7 +217,7 @@ const getSubjectById = async (req, res) => {
     res.json({ subject })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -254,7 +255,7 @@ const updateSubject = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -310,7 +311,7 @@ const deleteSubject = async (req, res) => {
     res.json({ message: 'Subject deleted successfully!' })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -347,7 +348,7 @@ const assignInstructor = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -446,7 +447,7 @@ const getSubjectEnrollments = async (req, res) => {
       students: studentOptions
     })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -501,7 +502,7 @@ const updateSubjectEnrollments = async (req, res) => {
       total: enrollmentCount
     })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -516,3 +517,4 @@ module.exports = {
   getSubjectEnrollments,
   updateSubjectEnrollments
 }
+

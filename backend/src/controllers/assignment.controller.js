@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma')
+const logger = require('../utils/logger')
 
 const buildUploadedFileUrl = (req, file) => {
   if (!file) return undefined
@@ -60,7 +61,7 @@ const createAssignment = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -96,7 +97,7 @@ const getAllAssignments = async (req, res) => {
     res.json({ total: assignments.length, assignments })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -128,7 +129,7 @@ const getAssignmentById = async (req, res) => {
     res.json({ assignment })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -174,7 +175,7 @@ const updateAssignment = async (req, res) => {
     res.json({ message: 'Assignment updated successfully!', assignment: updated })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -196,7 +197,7 @@ const deleteAssignment = async (req, res) => {
     res.json({ message: 'Assignment deleted successfully!' })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -259,7 +260,7 @@ const submitAssignment = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -292,7 +293,7 @@ const getMySubmissions = async (req, res) => {
     res.json({ total: submissions.length, submissions })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -331,7 +332,7 @@ const gradeSubmission = async (req, res) => {
     res.json({ message: 'Submission graded successfully!', submission: updated })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -346,3 +347,4 @@ module.exports = {
   getMySubmissions,
   gradeSubmission
 }
+

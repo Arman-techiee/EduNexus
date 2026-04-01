@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma')
+const logger = require('../utils/logger')
 
 const getInstructorProfile = (userId) => prisma.instructor.findUnique({
   where: { userId }
@@ -93,7 +94,7 @@ const addMarks = async (req, res) => {
     res.status(201).json({ message: 'Marks added successfully!', mark })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -119,7 +120,7 @@ const updateMarks = async (req, res) => {
     res.json({ message: 'Marks updated successfully!', mark: updated })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -152,7 +153,7 @@ const getMarksBySubject = async (req, res) => {
     res.json({ total: marks.length, marks, subject: access.subject })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -206,7 +207,7 @@ const getEnrolledStudentsBySubject = async (req, res) => {
     res.json({ total: students.length, students, subject: access.subject })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -250,7 +251,7 @@ const getMyMarks = async (req, res) => {
     res.json({ marks, summary: Object.values(summary) })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -272,7 +273,7 @@ const deleteMarks = async (req, res) => {
     res.json({ message: 'Mark deleted successfully!' })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -285,3 +286,4 @@ module.exports = {
   getMyMarks,
   deleteMarks
 }
+

@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma')
+const logger = require('../utils/logger')
 
 const normalizeDepartment = (value) => value ? value.trim() : ''
 
@@ -32,7 +33,7 @@ const createDepartment = async (req, res) => {
       department
     })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -60,7 +61,7 @@ const getAllDepartments = async (_req, res) => {
 
     res.json({ total: enriched.length, departments: enriched })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -103,7 +104,7 @@ const updateDepartment = async (req, res) => {
       department: updated
     })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -131,7 +132,7 @@ const deleteDepartment = async (req, res) => {
 
     res.json({ message: 'Department deleted successfully!' })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -143,3 +144,4 @@ module.exports = {
   deleteDepartment,
   ensureDepartmentExists
 }
+

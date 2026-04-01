@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const dotenv = require('dotenv')
 const path = require('path')
+const logger = require('./utils/logger')
 
 dotenv.config()
 
@@ -42,12 +43,12 @@ app.get('/', (req, res) => {
 })
 
 app.use((error, _req, res, _next) => {
-  console.error(error)
+  logger.error(error.message, { stack: error.stack })
   res.status(400).json({ message: error.message || 'Something went wrong' })
 })
 
 const PORT = process.env.PORT || 5000
 
 app.listen(PORT, () => {
-  console.log(`EduNexus server running on port ${PORT}`)
+  logger.info('EduNexus server running', { port: PORT })
 })

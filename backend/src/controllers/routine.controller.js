@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma')
+const logger = require('../utils/logger')
 
 const buildRoutineFilters = async (req) => {
   const { dayOfWeek, semester } = req.query
@@ -76,7 +77,7 @@ const createRoutine = async (req, res) => {
 
     res.status(201).json({ message: 'Routine created successfully!', routine })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -102,7 +103,7 @@ const getAllRoutines = async (req, res) => {
 
     res.json({ total: routines.length, routines })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -123,7 +124,7 @@ const getRoutineById = async (req, res) => {
     if (!routine) return res.status(404).json({ message: 'Routine not found' })
     res.json({ routine })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -150,7 +151,7 @@ const updateRoutine = async (req, res) => {
 
     res.json({ message: 'Routine updated successfully!', routine: updated })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -167,9 +168,10 @@ const deleteRoutine = async (req, res) => {
     await prisma.routine.delete({ where: { id } })
     res.json({ message: 'Routine deleted successfully!' })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
 
 module.exports = { createRoutine, getAllRoutines, getRoutineById, updateRoutine, deleteRoutine }
+

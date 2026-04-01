@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma')
 const { getPagination } = require('../utils/pagination')
+const logger = require('../utils/logger')
 
 // ================================
 // CREATE NOTICE (Admin/Instructor)
@@ -26,7 +27,7 @@ const createNotice = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -58,7 +59,7 @@ const getAllNotices = async (req, res) => {
     res.json({ total, page, limit, notices })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -84,7 +85,7 @@ const getNoticeById = async (req, res) => {
     res.json({ notice })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -115,7 +116,7 @@ const updateNotice = async (req, res) => {
     res.json({ message: 'Notice updated successfully!', notice: updated })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -141,7 +142,7 @@ const deleteNotice = async (req, res) => {
     res.json({ message: 'Notice deleted successfully!' })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -153,3 +154,4 @@ module.exports = {
   updateNotice,
   deleteNotice
 }
+

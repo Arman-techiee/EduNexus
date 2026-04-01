@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma')
 const QRCode = require('qrcode')
+const logger = require('../utils/logger')
 
 const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE']
 const QR_VALIDITY_MINUTES = 15
@@ -191,7 +192,7 @@ const generateQR = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -282,7 +283,7 @@ const markAttendanceQR = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -365,7 +366,7 @@ const markAttendanceManual = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -418,7 +419,7 @@ const getAttendanceBySubject = async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -468,7 +469,7 @@ const getMyAttendance = async (req, res) => {
     res.json({ attendance, summary })
 
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -519,7 +520,7 @@ const getSubjectRoster = async (req, res) => {
       summary: buildAttendanceSummary(attendance)
     })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -637,7 +638,7 @@ const markDailyAttendanceQR = async (req, res) => {
       cutoffAt: gateWindow.cutoffAt
     })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -677,7 +678,7 @@ const generateDailyAttendanceQR = async (req, res) => {
       cutoffAt: gateWindow.cutoffAt
     })
   } catch (error) {
-    console.error(error)
+    logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong', error: error.message })
   }
 }
@@ -692,3 +693,4 @@ module.exports = {
   getMyAttendance,
   getSubjectRoster
 }
+

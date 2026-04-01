@@ -25,7 +25,8 @@
     "multer": "^2.0.2",
     "pg": "^8.20.0",
     "prisma": "^7.6.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
