@@ -183,6 +183,32 @@ model Attendance {
   @@unique([studentId, subjectId, date])
 }
 
+model GateScanWindow {
+  id               String   @id @default(uuid())
+  title            String?
+  dayOfWeek        DayOfWeek
+  startTime        String
+  endTime          String
+  allowedSemesters Int[]
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([dayOfWeek, isActive])
+}
+
+model AttendanceHoliday {
+  id          String   @id @default(uuid())
+  date        DateTime @unique
+  title       String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date, isActive])
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT

@@ -155,46 +155,115 @@ const buildDateWithTime = (baseDate, timeValue) => {
   return date
 }
 
-const getTodayGateWindow = async () => {
-  const dayRange = getDayRange()
-  const todayName = getCurrentDayName(dayRange.start)
+const normalizeSemesterList = (semesters = []) => (
+  [...new Set(
+    semesters
+      .map((value) => parseInt(value, 10))
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= 12)
+  )].sort((left, right) => left - right)
+)
 
-  const firstRoutine = await prisma.routine.findFirst({
-    where: { dayOfWeek: todayName },
+const getGateWindowRange = (baseDate, gateWindow) => ({
+  startsAt: buildDateWithTime(baseDate, gateWindow.startTime),
+  endsAt: buildDateWithTime(baseDate, gateWindow.endTime)
+})
+
+const rangesOverlap = (leftStart, leftEnd, rightStart, rightEnd) => (
+  leftStart < rightEnd && leftEnd > rightStart
+)
+
+const getHolidayForDate = async (referenceDate = new Date()) => {
+  const dayRange = getDayRange(referenceDate)
+  return prisma.attendanceHoliday.findFirst({
+    where: {
+      date: dayRange.start,
+      isActive: true
+    }
+  })
+}
+
+const getDailyGateWindows = async (referenceDate = new Date()) => {
+  const dayRange = getDayRange(referenceDate)
+  const dayOfWeek = getCurrentDayName(dayRange.start)
+  const holiday = await getHolidayForDate(dayRange.start)
+
+  const windows = await prisma.gateScanWindow.findMany({
+    where: {
+      dayOfWeek,
+      isActive: true
+    },
     orderBy: { startTime: 'asc' }
   })
 
-  if (!firstRoutine) {
-    return null
-  }
+  const enrichedWindows = windows.map((window) => {
+    const range = getGateWindowRange(dayRange.start, window)
+    return {
+      ...window,
+      allowedSemesters: normalizeSemesterList(window.allowedSemesters),
+      startsAt: range.startsAt,
+      endsAt: range.endsAt
+    }
+  })
 
-  const startAt = buildDateWithTime(dayRange.start, firstRoutine.startTime)
-  const cutoffAt = new Date(startAt)
-  cutoffAt.setMinutes(cutoffAt.getMinutes() + 30)
+  const active = []
+  let nextWindow = null
+  const semesterCutoffMap = new Map()
+
+  enrichedWindows.forEach((window) => {
+    window.allowedSemesters.forEach((semester) => {
+      const currentCutoff = semesterCutoffMap.get(semester)
+      if (!currentCutoff || window.endsAt > currentCutoff) {
+        semesterCutoffMap.set(semester, window.endsAt)
+      }
+    })
+
+    if (referenceDate >= window.startsAt && referenceDate <= window.endsAt) {
+      active.push(window)
+      return
+    }
+
+    if (referenceDate < window.startsAt) {
+      if (!nextWindow || window.startsAt < nextWindow.startsAt) {
+        nextWindow = window
+      }
+    }
+  })
 
   return {
     dayRange,
-    dayOfWeek: todayName,
-    firstRoutine,
-    startAt,
-    cutoffAt
+    dayOfWeek,
+    holiday,
+    windows: enrichedWindows,
+    active,
+    nextWindow,
+    semesterCutoffMap
   }
 }
 
-const getRoutineScanWindow = (baseDate, routine) => {
-  const startsAt = buildDateWithTime(baseDate, routine.startTime)
-  const endsAt = new Date(startsAt)
-  endsAt.setMinutes(endsAt.getMinutes() + 15)
+const dedupeRoutinesBySubject = (routines) => {
+  const routineMap = new Map()
 
-  return { startsAt, endsAt }
+  routines.forEach((routine) => {
+    if (!routineMap.has(routine.subjectId)) {
+      routineMap.set(routine.subjectId, routine)
+    }
+  })
+
+  return [...routineMap.values()]
 }
 
-const getActiveRoutineWindows = async (referenceDate = new Date()) => {
-  const dayRange = getDayRange(referenceDate)
-  const dayOfWeek = getCurrentDayName(dayRange.start)
-
+const getStudentScheduledRoutinesForDay = async ({ studentId, dayOfWeek }) => {
   const routines = await prisma.routine.findMany({
-    where: { dayOfWeek },
+    where: {
+      dayOfWeek,
+      subject: {
+        enrollments: {
+          some: {
+            studentId
+          }
+        }
+      }
+    },
     include: {
       subject: {
         select: {
@@ -209,37 +278,50 @@ const getActiveRoutineWindows = async (referenceDate = new Date()) => {
     orderBy: { startTime: 'asc' }
   })
 
-  const active = []
-  let nextWindow = null
+  return dedupeRoutinesBySubject(routines)
+}
 
-  routines.forEach((routine) => {
-    const window = getRoutineScanWindow(dayRange.start, routine)
-    const enriched = {
-      ...routine,
-      startsAt: window.startsAt,
-      endsAt: window.endsAt
-    }
+const filterRoutinesForSemesterWindows = ({ routines, baseDate, semester, windows }) => {
+  if (!windows.length) {
+    return []
+  }
 
-    if (referenceDate >= window.startsAt && referenceDate <= window.endsAt) {
-      active.push(enriched)
-      return
-    }
+  return routines.filter((routine) => {
+    const routineStart = buildDateWithTime(baseDate, routine.startTime)
+    const routineEnd = buildDateWithTime(baseDate, routine.endTime)
 
-    if (referenceDate < window.startsAt) {
-      if (!nextWindow || window.startsAt < nextWindow.startsAt) {
-        nextWindow = enriched
-      }
-    }
+    return windows.some((window) => (
+      window.allowedSemesters.includes(semester) &&
+      rangesOverlap(routineStart, routineEnd, window.startsAt, window.endsAt)
+    ))
   })
-
-  return { dayRange, dayOfWeek, active, nextWindow }
 }
 
 const syncClosedRoutineAbsences = async (referenceDate = new Date()) => {
-  const { dayRange, dayOfWeek } = await getActiveRoutineWindows(referenceDate)
+  const gateDay = await getDailyGateWindows(referenceDate)
 
-  const routines = await prisma.routine.findMany({
-    where: { dayOfWeek },
+  if (gateDay.holiday || !gateDay.windows.length) {
+    return
+  }
+
+  const students = await prisma.student.findMany({
+    where: {
+      user: { isActive: true }
+    },
+    select: {
+      id: true,
+      semester: true
+    }
+  })
+
+  if (!students.length) {
+    return
+  }
+
+  const routines = dedupeRoutinesBySubject(await prisma.routine.findMany({
+    where: {
+      dayOfWeek: gateDay.dayOfWeek
+    },
     include: {
       subject: {
         select: {
@@ -253,22 +335,17 @@ const syncClosedRoutineAbsences = async (referenceDate = new Date()) => {
       }
     },
     orderBy: { startTime: 'asc' }
-  })
+  }))
 
-  const closedRoutines = routines.filter((routine) => {
-    const { endsAt } = getRoutineScanWindow(dayRange.start, routine)
-    return referenceDate > endsAt
-  })
-
-  if (!closedRoutines.length) {
+  if (!routines.length) {
     return
   }
 
-  const subjectIds = closedRoutines.map((routine) => routine.subjectId)
+  const subjectIds = routines.map((routine) => routine.subjectId)
   const existingAttendance = await prisma.attendance.findMany({
     where: {
       subjectId: { in: subjectIds },
-      date: { gte: dayRange.start, lt: dayRange.end }
+      date: { gte: gateDay.dayRange.start, lt: gateDay.dayRange.end }
     },
     select: {
       studentId: true,
@@ -279,20 +356,36 @@ const syncClosedRoutineAbsences = async (referenceDate = new Date()) => {
   const existingKeys = new Set(existingAttendance.map((record) => `${record.studentId}:${record.subjectId}`))
   const absencesToCreate = []
 
-  closedRoutines.forEach((routine) => {
-    routine.subject.enrollments.forEach((enrollment) => {
-      const key = `${enrollment.studentId}:${routine.subjectId}`
+  students.forEach((student) => {
+    const closedWindowsForSemester = gateDay.windows.filter((window) => (
+      window.allowedSemesters.includes(student.semester) &&
+      referenceDate > window.endsAt
+    ))
+
+    if (!closedWindowsForSemester.length) {
+      return
+    }
+
+    const semesterRoutines = filterRoutinesForSemesterWindows({
+      routines: routines.filter((routine) => routine.subject.enrollments.some((enrollment) => enrollment.studentId === student.id)),
+      baseDate: gateDay.dayRange.start,
+      semester: student.semester,
+      windows: closedWindowsForSemester
+    })
+
+    semesterRoutines.forEach((routine) => {
+      const key = `${student.id}:${routine.subjectId}`
       if (existingKeys.has(key)) {
         return
       }
 
       existingKeys.add(key)
       absencesToCreate.push({
-        studentId: enrollment.studentId,
+        studentId: student.id,
         subjectId: routine.subjectId,
         instructorId: routine.instructorId,
         status: 'ABSENT',
-        date: dayRange.start
+        date: gateDay.dayRange.start
       })
     })
   })
@@ -1351,7 +1444,7 @@ const markDailyAttendanceQR = async (req, res) => {
     await syncClosedRoutineAbsences()
 
     const parsedQR = parseQrPayload(qrData)
-    if (!parsedQR || parsedQR.type !== 'GATE_PERIOD' || !Array.isArray(parsedQR.routineIds)) {
+    if (!parsedQR || parsedQR.type !== 'GATE_STUDENT_QR' || !Array.isArray(parsedQR.windowIds)) {
       return res.status(400).json({ message: 'Invalid gate attendance QR code' })
     }
 
@@ -1360,40 +1453,47 @@ const markDailyAttendanceQR = async (req, res) => {
       return res.status(400).json({ message: 'This gate QR has already rotated. Please scan the latest QR.' })
     }
 
-    const activeWindows = await getActiveRoutineWindows(now)
-    if (!activeWindows.active.length) {
-      return res.status(400).json({ message: 'There is no active attendance window right now.' })
+    const gateDay = await getDailyGateWindows(now)
+    if (gateDay.holiday) {
+      return res.status(400).json({ message: `Today is marked as a holiday: ${gateDay.holiday.title}` })
     }
 
-    const activeMap = new Map(activeWindows.active.map((routine) => [routine.id, routine]))
-    const eligibleRoutines = parsedQR.routineIds
-      .map((routineId) => activeMap.get(routineId))
+    if (!gateDay.active.length) {
+      return res.status(400).json({ message: 'The scan time has passed for now. Please wait for the next active window.' })
+    }
+
+    const activeMap = new Map(gateDay.active.map((window) => [window.id, window]))
+    const eligibleWindows = parsedQR.windowIds
+      .map((windowId) => activeMap.get(windowId))
       .filter(Boolean)
 
-    if (!eligibleRoutines.length) {
+    if (!eligibleWindows.length) {
       return res.status(400).json({ message: 'This gate QR is not valid for the current routine window.' })
     }
 
-    const routineIds = eligibleRoutines.map((routine) => routine.id)
-    const routines = await prisma.routine.findMany({
-      where: {
-        id: { in: routineIds },
-        subject: {
-          enrollments: {
-            some: {
-              studentId: student.id
-            }
-          }
-        }
-      },
-      include: {
-        subject: { select: { id: true, name: true, code: true } }
-      },
-      orderBy: { startTime: 'asc' }
+    const allowedSemesters = normalizeSemesterList([
+      ...(parsedQR.allowedSemesters || []),
+      ...eligibleWindows.flatMap((window) => window.allowedSemesters)
+    ])
+
+    if (!allowedSemesters.includes(student.semester)) {
+      return res.status(403).json({ message: 'Your semester is not allowed to scan this Student QR right now.' })
+    }
+
+    const studentDayRoutines = await getStudentScheduledRoutinesForDay({
+      studentId: student.id,
+      dayOfWeek: gateDay.dayOfWeek
+    })
+
+    const routines = filterRoutinesForSemesterWindows({
+      routines: studentDayRoutines,
+      baseDate: gateDay.dayRange.start,
+      semester: student.semester,
+      windows: eligibleWindows
     })
 
     if (!routines.length) {
-      return res.status(400).json({ message: 'You do not have any class scheduled in this active attendance window.' })
+      return res.status(400).json({ message: 'You do not have any scheduled subject in this active Student QR time slot.' })
     }
 
     const subjectIds = routines.map((routine) => routine.subjectId)
@@ -1401,7 +1501,7 @@ const markDailyAttendanceQR = async (req, res) => {
       where: {
         studentId: student.id,
         subjectId: { in: subjectIds },
-        date: { gte: activeWindows.dayRange.start, lt: activeWindows.dayRange.end }
+        date: { gte: gateDay.dayRange.start, lt: gateDay.dayRange.end }
       }
     })
 
@@ -1419,7 +1519,7 @@ const markDailyAttendanceQR = async (req, res) => {
             studentId_subjectId_date: {
               studentId: student.id,
               subjectId: routine.subjectId,
-              date: activeWindows.dayRange.start
+              date: gateDay.dayRange.start
             }
           },
           update: {
@@ -1433,7 +1533,7 @@ const markDailyAttendanceQR = async (req, res) => {
             instructorId: routine.instructorId,
             status: 'PRESENT',
             qrCode: qrData,
-            date: activeWindows.dayRange.start
+            date: gateDay.dayRange.start
           }
         })
       ))
@@ -1453,7 +1553,7 @@ const markDailyAttendanceQR = async (req, res) => {
     res.status(201).json({
       message: `Attendance marked for ${markedSubjects.length} class${markedSubjects.length > 1 ? 'es' : ''}.`,
       markedSubjects,
-      date: activeWindows.dayRange.start,
+      date: gateDay.dayRange.start,
       expiresAt: parsedQR.expiresAt
     })
 
@@ -1463,8 +1563,8 @@ const markDailyAttendanceQR = async (req, res) => {
       action: 'DAILY_GATE_ATTENDANCE_MARKED',
       entityType: 'Attendance',
       metadata: {
-        date: activeWindows.dayRange.start,
-        routineIds,
+        date: gateDay.dayRange.start,
+        windowIds: eligibleWindows.map((window) => window.id),
         markedSubjectIds: markedSubjects.map((subject) => subject.id)
       }
     })
@@ -1477,20 +1577,38 @@ const getLiveGateAttendanceQrPayload = async (req) => {
   await syncClosedRoutineAbsences()
 
   const now = new Date()
-  const windows = await getActiveRoutineWindows(now)
+  const windows = await getDailyGateWindows(now)
+
+  if (windows.holiday) {
+    return {
+      active: false,
+      holiday: true,
+      dayOfWeek: windows.dayOfWeek,
+      serverTime: now.toISOString(),
+      holidayInfo: {
+        id: windows.holiday.id,
+        title: windows.holiday.title,
+        description: windows.holiday.description,
+        date: windows.holiday.date.toISOString()
+      },
+      nextWindow: null
+    }
+  }
+
   if (!windows.active.length) {
     return {
       active: false,
       dayOfWeek: windows.dayOfWeek,
       serverTime: now.toISOString(),
+      timePassed: windows.windows.length > 0 && !windows.nextWindow,
       nextWindow: windows.nextWindow
         ? {
             id: windows.nextWindow.id,
-            subject: windows.nextWindow.subject,
             startTime: windows.nextWindow.startTime,
             endTime: windows.nextWindow.endTime,
             startsAt: windows.nextWindow.startsAt.toISOString(),
-            scanClosesAt: windows.nextWindow.endsAt.toISOString()
+            scanClosesAt: windows.nextWindow.endsAt.toISOString(),
+            allowedSemesters: windows.nextWindow.allowedSemesters
           }
         : null
     }
@@ -1498,16 +1616,21 @@ const getLiveGateAttendanceQrPayload = async (req) => {
 
   const expiresAt = new Date(Math.min(
     now.getTime() + (60 * 1000),
-    ...windows.active.map((routine) => routine.endsAt.getTime())
+    ...windows.active.map((window) => window.endsAt.getTime())
   ))
 
+  const allowedSemesters = normalizeSemesterList(
+    windows.active.flatMap((window) => window.allowedSemesters)
+  )
+
   const qrData = createSignedQrPayload({
-    type: 'GATE_PERIOD',
+    type: 'GATE_STUDENT_QR',
     issuedBy: req.user.id,
     issuedAt: now.toISOString(),
     expiresAt: expiresAt.toISOString(),
     dayOfWeek: windows.dayOfWeek,
-    routineIds: windows.active.map((routine) => routine.id)
+    windowIds: windows.active.map((window) => window.id),
+    allowedSemesters
   })
 
   const qrCode = await QRCode.toDataURL(qrData)
@@ -1520,22 +1643,25 @@ const getLiveGateAttendanceQrPayload = async (req) => {
     serverTime: now.toISOString(),
     expiresAt: expiresAt.toISOString(),
     refreshInSeconds: Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 1000)),
-    periods: windows.active.map((routine) => ({
-      id: routine.id,
-      subject: routine.subject,
-      startTime: routine.startTime,
-      endTime: routine.endTime,
-      startsAt: routine.startsAt.toISOString(),
-      scanClosesAt: routine.endsAt.toISOString()
+    allowedSemesters,
+    periods: windows.active.map((window) => ({
+      id: window.id,
+      title: window.title,
+      startTime: window.startTime,
+      endTime: window.endTime,
+      startsAt: window.startsAt.toISOString(),
+      scanClosesAt: window.endsAt.toISOString(),
+      allowedSemesters: window.allowedSemesters
     })),
     nextWindow: windows.nextWindow
       ? {
           id: windows.nextWindow.id,
-          subject: windows.nextWindow.subject,
+          title: windows.nextWindow.title,
           startTime: windows.nextWindow.startTime,
           endTime: windows.nextWindow.endTime,
           startsAt: windows.nextWindow.startsAt.toISOString(),
-          scanClosesAt: windows.nextWindow.endsAt.toISOString()
+          scanClosesAt: windows.nextWindow.endsAt.toISOString(),
+          allowedSemesters: windows.nextWindow.allowedSemesters
         }
       : null
   }
@@ -1576,7 +1702,8 @@ const generateDailyAttendanceQR = async (req, res) => {
       action: 'DAILY_GATE_QR_GENERATED',
       entityType: 'Attendance',
       metadata: {
-        routineIds: payload.periods.map((period) => period.id),
+        windowIds: payload.periods.map((period) => period.id),
+        allowedSemesters: payload.allowedSemesters,
         expiresAt: payload.expiresAt
       }
     })
@@ -1610,7 +1737,9 @@ const getMyAbsenceTickets = async (req, res) => {
         where: {
           studentId: student.id,
           status: 'ABSENT',
-          absenceTicket: null
+          absenceTicket: {
+            is: null
+          }
         },
         include: {
           subject: { select: { id: true, name: true, code: true } }
@@ -1776,6 +1905,199 @@ const reviewAbsenceTicket = async (req, res) => {
   }
 }
 
+const findConflictingGateWindow = async ({ id, dayOfWeek, startTime, endTime, allowedSemesters }) => prisma.gateScanWindow.findFirst({
+  where: {
+    dayOfWeek,
+    isActive: true,
+    id: id ? { not: id } : undefined,
+    allowedSemesters: {
+      hasSome: normalizeSemesterList(allowedSemesters)
+    },
+    AND: [
+      { startTime: { lt: endTime } },
+      { endTime: { gt: startTime } }
+    ]
+  }
+})
+
+const getGateAttendanceSettings = async (req, res) => {
+  try {
+    const { dayOfWeek } = req.query
+
+    const [windows, holidays] = await Promise.all([
+      prisma.gateScanWindow.findMany({
+        where: dayOfWeek ? { dayOfWeek } : undefined,
+        orderBy: [
+          { dayOfWeek: 'asc' },
+          { startTime: 'asc' }
+        ]
+      }),
+      prisma.attendanceHoliday.findMany({
+        orderBy: { date: 'asc' }
+      })
+    ])
+
+    res.json({
+      windows: windows.map((window) => ({
+        ...window,
+        allowedSemesters: normalizeSemesterList(window.allowedSemesters)
+      })),
+      holidays
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const createGateScanWindow = async (req, res) => {
+  try {
+    const { title, dayOfWeek, startTime, endTime, allowedSemesters, isActive = true } = req.body
+    const normalizedSemesters = normalizeSemesterList(allowedSemesters)
+
+    const conflict = await findConflictingGateWindow({
+      dayOfWeek,
+      startTime,
+      endTime,
+      allowedSemesters: normalizedSemesters
+    })
+
+    if (conflict) {
+      return res.status(400).json({ message: 'This time window overlaps with another Student QR slot for one of the same semesters.' })
+    }
+
+    const window = await prisma.gateScanWindow.create({
+      data: {
+        title,
+        dayOfWeek,
+        startTime,
+        endTime,
+        allowedSemesters: normalizedSemesters,
+        isActive
+      }
+    })
+
+    res.status(201).json({
+      message: 'Student QR window saved successfully.',
+      window: {
+        ...window,
+        allowedSemesters: normalizeSemesterList(window.allowedSemesters)
+      }
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const updateGateScanWindow = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { title, dayOfWeek, startTime, endTime, allowedSemesters, isActive = true } = req.body
+    const normalizedSemesters = normalizeSemesterList(allowedSemesters)
+
+    const existing = await prisma.gateScanWindow.findUnique({ where: { id } })
+    if (!existing) {
+      return res.status(404).json({ message: 'Student QR window not found' })
+    }
+
+    const conflict = await findConflictingGateWindow({
+      id,
+      dayOfWeek,
+      startTime,
+      endTime,
+      allowedSemesters: normalizedSemesters
+    })
+
+    if (conflict) {
+      return res.status(400).json({ message: 'This time window overlaps with another Student QR slot for one of the same semesters.' })
+    }
+
+    const window = await prisma.gateScanWindow.update({
+      where: { id },
+      data: {
+        title,
+        dayOfWeek,
+        startTime,
+        endTime,
+        allowedSemesters: normalizedSemesters,
+        isActive
+      }
+    })
+
+    res.json({
+      message: 'Student QR window updated successfully.',
+      window: {
+        ...window,
+        allowedSemesters: normalizeSemesterList(window.allowedSemesters)
+      }
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const deleteGateScanWindow = async (req, res) => {
+  try {
+    const { id } = req.params
+    const existing = await prisma.gateScanWindow.findUnique({ where: { id } })
+    if (!existing) {
+      return res.status(404).json({ message: 'Student QR window not found' })
+    }
+
+    await prisma.gateScanWindow.delete({ where: { id } })
+    res.json({ message: 'Student QR window deleted successfully.' })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const createAttendanceHoliday = async (req, res) => {
+  try {
+    const { date, title, description, isActive = true } = req.body
+    const dayRange = getDayRange(date)
+
+    if (!dayRange) {
+      return res.status(400).json({ message: 'Invalid holiday date' })
+    }
+
+    const holiday = await prisma.attendanceHoliday.upsert({
+      where: { date: dayRange.start },
+      update: {
+        title,
+        description,
+        isActive
+      },
+      create: {
+        date: dayRange.start,
+        title,
+        description,
+        isActive
+      }
+    })
+
+    res.status(201).json({
+      message: 'Holiday saved successfully.',
+      holiday
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const deleteAttendanceHoliday = async (req, res) => {
+  try {
+    const { id } = req.params
+    const existing = await prisma.attendanceHoliday.findUnique({ where: { id } })
+    if (!existing) {
+      return res.status(404).json({ message: 'Holiday not found' })
+    }
+
+    await prisma.attendanceHoliday.delete({ where: { id } })
+    res.json({ message: 'Holiday removed successfully.' })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
 module.exports = {
   generateDailyAttendanceQR,
   getLiveGateAttendanceQr,
@@ -1790,6 +2112,12 @@ module.exports = {
   exportAttendanceBySubject,
   getMyAttendance,
   getSubjectRoster,
+  getGateAttendanceSettings,
+  createGateScanWindow,
+  updateGateScanWindow,
+  deleteGateScanWindow,
+  createAttendanceHoliday,
+  deleteAttendanceHoliday,
   getMyAbsenceTickets,
   createAbsenceTicket,
   getAbsenceTicketsForStaff,

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { API_BASE_URL, clearAuthState, getAuthState, refreshSession, setAuthState, subscribeToAuthState } from '../utils/api'
+import { API_BASE_URL, clearAuthState, getAuthState, hasSessionHint, refreshSession, setAuthState, subscribeToAuthState } from '../utils/api'
 
 const AuthContext = createContext()
 
@@ -18,6 +18,14 @@ export const AuthProvider = ({ children }) => {
       setToken(nextState.token)
       setUser(nextState.user)
     })
+
+    if (!hasSessionHint()) {
+      setLoading(false)
+      return () => {
+        isMounted = false
+        unsubscribe()
+      }
+    }
 
     refreshSession()
       .catch(() => {

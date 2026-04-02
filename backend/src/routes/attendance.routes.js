@@ -18,6 +18,12 @@ const {
   exportAttendanceBySubject,
   getMyAttendance,
   getSubjectRoster,
+  getGateAttendanceSettings,
+  createGateScanWindow,
+  updateGateScanWindow,
+  deleteGateScanWindow,
+  createAttendanceHoliday,
+  deleteAttendanceHoliday,
   getMyAbsenceTickets,
   createAbsenceTicket,
   getAbsenceTicketsForStaff,
@@ -30,6 +36,12 @@ router.use(attachActorProfiles)
 // Instructor routes
 router.post('/generate-daily-qr', allowRoles('GATEKEEPER'), generateDailyAttendanceQR)
 router.get('/gatekeeper/live-qr', allowRoles('GATEKEEPER'), getLiveGateAttendanceQr)
+router.get('/gate-settings', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.attendance.gateSettings), getGateAttendanceSettings)
+router.post('/gate-settings/windows', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.attendance.createGateWindow), createGateScanWindow)
+router.put('/gate-settings/windows/:id', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.attendance.updateGateWindow), updateGateScanWindow)
+router.delete('/gate-settings/windows/:id', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.attendance.deleteGateWindow), deleteGateScanWindow)
+router.post('/gate-settings/holidays', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.attendance.createHoliday), createAttendanceHoliday)
+router.delete('/gate-settings/holidays/:id', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.attendance.deleteHoliday), deleteAttendanceHoliday)
 router.post('/generate-qr', allowRoles('INSTRUCTOR', 'COORDINATOR'), validate(schemas.attendance.generateQr), generateQR)
 router.post('/manual', allowRoles('INSTRUCTOR', 'COORDINATOR'), validate(schemas.attendance.manual), markAttendanceManual)
 router.get('/coordinator/department-report', allowRoles('COORDINATOR'), validate(schemas.attendance.coordinatorReport), getCoordinatorDepartmentAttendanceReport)

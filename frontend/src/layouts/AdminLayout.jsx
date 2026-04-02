@@ -31,6 +31,7 @@ const AdminLayout = ({ children }) => {
           { path: `${basePath}/users`, label: 'Students', icon: Users, meta: 'People and access' },
           { path: `${basePath}/applications`, label: 'Admissions', icon: FileText, meta: 'Applications' },
           { path: `${basePath}/subjects`, label: 'Subjects', icon: BookOpenText, meta: 'Academic setup' },
+          { path: `${basePath}/student-qr`, label: 'Student QR', icon: Percent, meta: 'Gate scan windows' },
           { path: `${basePath}/attendance`, label: 'Attendance', icon: Percent, meta: 'Attendance records' },
           { path: `${basePath}/assignments`, label: 'Assignments', icon: ClipboardList, meta: 'Task tracking' },
           { path: `${basePath}/marks`, label: 'Results', icon: FileText, meta: 'Assessment data' },
@@ -43,6 +44,7 @@ const AdminLayout = ({ children }) => {
           { path: `${basePath}/applications`, label: 'Admissions', icon: FileText, meta: 'Application review' },
           { path: `${basePath}/departments`, label: 'Departments', icon: ShieldUser, meta: 'Department setup' },
           { path: `${basePath}/subjects`, label: 'Subjects', icon: BookOpenText, meta: 'Academic setup' },
+          { path: `${basePath}/student-qr`, label: 'Student QR', icon: Percent, meta: 'Gate scan windows' },
           { path: `${basePath}/profile`, label: 'Profile', icon: UserCircle2, meta: 'My account' }
         ]
   ), [basePath, isCoordinator])

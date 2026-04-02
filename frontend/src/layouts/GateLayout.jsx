@@ -9,7 +9,7 @@ const GateLayout = ({ children }) => {
   const navigate = useNavigate()
 
   const sidebarItems = [
-    { path: '/gate', label: 'Live QR', icon: Percent, meta: 'Active gate attendance' },
+    { path: '/gate', label: 'Student QR', icon: Percent, meta: 'Live student attendance QR' },
     { label: 'Profile', icon: UserCircle2, meta: 'My account', disabled: true },
     { label: 'Overview', icon: LayoutDashboard, meta: 'More gate tools', disabled: true }
   ]
@@ -31,7 +31,7 @@ const GateLayout = ({ children }) => {
 
   return (
     <AppShell
-      roleLabel="Gate Panel"
+      roleLabel="Gate Student QR"
       roleTheme="gate"
       user={user}
       sidebarItems={sidebarItems}

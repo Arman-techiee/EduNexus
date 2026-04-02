@@ -16,6 +16,7 @@ import Departments from './pages/admin/Departments'
 import Subjects from './pages/admin/Subjects'
 import Notices from './pages/admin/Notices'
 import AdminRoutine from './pages/admin/Routine'
+import StudentQrSettings from './pages/admin/StudentQrSettings'
 import GateDashboard from './pages/gate/Dashboard'
 
 // Instructor pages
@@ -100,6 +101,7 @@ const AppRoutes = () => {
       <Route path="/admin/subjects" element={<ProtectedRoute allowedRoles={['ADMIN', 'COORDINATOR']}><Subjects /></ProtectedRoute>} />
       <Route path="/admin/notices" element={<ProtectedRoute allowedRoles={['ADMIN', 'COORDINATOR']}><Notices /></ProtectedRoute>} />
       <Route path="/admin/routine" element={<ProtectedRoute allowedRoles={['ADMIN', 'COORDINATOR']}><AdminRoutine /></ProtectedRoute>} />
+      <Route path="/admin/student-qr" element={<ProtectedRoute allowedRoles={['ADMIN', 'COORDINATOR']}><StudentQrSettings /></ProtectedRoute>} />
 
       {/* Coordinator Routes */}
       <Route path="/coordinator" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><AdminDashboard /></ProtectedRoute>} />
@@ -108,6 +110,7 @@ const AppRoutes = () => {
       <Route path="/coordinator/subjects" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Subjects /></ProtectedRoute>} />
       <Route path="/coordinator/notices" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Notices /></ProtectedRoute>} />
       <Route path="/coordinator/routine" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><AdminRoutine /></ProtectedRoute>} />
+      <Route path="/coordinator/student-qr" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><StudentQrSettings /></ProtectedRoute>} />
       <Route path="/coordinator/attendance" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Attendance /></ProtectedRoute>} />
       <Route path="/coordinator/assignments" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Assignments /></ProtectedRoute>} />
       <Route path="/coordinator/marks" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Marks /></ProtectedRoute>} />

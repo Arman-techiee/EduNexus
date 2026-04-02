@@ -36,6 +36,10 @@ const strongPasswordSchema = z.string()
   .regex(/[0-9]/, 'Password must contain a number')
 
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format')
+const minutesFromTime = (timeValue) => {
+  const [hours, minutes] = String(timeValue).split(':').map((value) => parseInt(value, 10))
+  return (hours * 60) + minutes
+}
 
 const userBaseSchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -147,6 +151,25 @@ const qrBody = z.object({
 const absenceTicketBody = z.object({
   attendanceId: z.string().uuid(),
   reason: z.string().trim().min(10).max(1000)
+})
+
+const gateScanWindowBody = z.object({
+  title: optionalString(120),
+  dayOfWeek: dayOfWeekEnum,
+  startTime: timeSchema,
+  endTime: timeSchema,
+  allowedSemesters: z.array(z.coerce.number().int().min(1).max(12)).min(1).max(12),
+  isActive: z.coerce.boolean().optional()
+}).refine((data) => minutesFromTime(data.endTime) > minutesFromTime(data.startTime), {
+  path: ['endTime'],
+  message: 'End time must be later than start time'
+})
+
+const attendanceHolidayBody = z.object({
+  date: z.string().trim().min(1),
+  title: z.string().trim().min(2).max(120),
+  description: optionalString(500),
+  isActive: z.coerce.boolean().optional()
 })
 
 const reviewAbsenceTicketBody = z.object({
@@ -337,6 +360,16 @@ const schemas = {
     generateQr: { body: z.object({ subjectId: z.string().uuid() }) },
     manual: { body: attendanceManualBody },
     scanQr: { body: qrBody },
+    gateSettings: {
+      query: z.object({
+        dayOfWeek: dayOfWeekEnum.optional()
+      })
+    },
+    createGateWindow: { body: gateScanWindowBody },
+    updateGateWindow: { params: uuidParam, body: gateScanWindowBody },
+    deleteGateWindow: { params: uuidParam },
+    createHoliday: { body: attendanceHolidayBody },
+    deleteHoliday: { params: uuidParam },
     createTicket: { body: absenceTicketBody },
     reviewTicket: {
       params: uuidParam,

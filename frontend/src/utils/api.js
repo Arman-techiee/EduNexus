@@ -7,8 +7,21 @@ let authState = {
   token: null,
   user: null
 }
+const SESSION_HINT_KEY = 'edunexus_session_hint'
 
 const authSubscribers = new Set()
+
+const setSessionHint = (enabled) => {
+  try {
+    if (enabled) {
+      window.localStorage.setItem(SESSION_HINT_KEY, '1')
+    } else {
+      window.localStorage.removeItem(SESSION_HINT_KEY)
+    }
+  } catch {
+    // Ignore storage access issues in private browsing or locked environments.
+  }
+}
 
 const notifyAuthSubscribers = () => {
   const snapshot = { ...authState }
@@ -24,8 +37,17 @@ export const subscribeToAuthState = (listener) => {
   }
 }
 
+export const hasSessionHint = () => {
+  try {
+    return window.localStorage.getItem(SESSION_HINT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export const setAuthState = ({ token = null, user = null } = {}) => {
   authState = { token, user }
+  setSessionHint(Boolean(token || user))
   notifyAuthSubscribers()
 }
 

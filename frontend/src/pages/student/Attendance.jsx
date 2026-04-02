@@ -84,14 +84,25 @@ const StudentAttendance = () => {
   const fetchAttendance = async () => {
     try {
       setError('')
-      const [attendanceRes, ticketsRes] = await Promise.all([
+      const [attendanceResult, ticketsResult] = await Promise.allSettled([
         api.get(`/attendance/my?page=${page}&limit=${limit}`),
         api.get('/attendance/tickets/my')
       ])
-      setAttendance(attendanceRes.data.attendance)
-      setSummary(attendanceRes.data.summary)
-      setTotal(attendanceRes.data.total)
-      setPendingTicketCount(ticketsRes.data.absencesWithoutTicket?.length || 0)
+
+      if (attendanceResult.status !== 'fulfilled') {
+        throw attendanceResult.reason
+      }
+
+      setAttendance(attendanceResult.value.data.attendance)
+      setSummary(attendanceResult.value.data.summary)
+      setTotal(attendanceResult.value.data.total)
+
+      if (ticketsResult.status === 'fulfilled') {
+        setPendingTicketCount(ticketsResult.value.data.absencesWithoutTicket?.length || 0)
+      } else {
+        logger.error(ticketsResult.reason)
+        setPendingTicketCount(0)
+      }
     } catch (fetchError) {
       logger.error(fetchError)
       setError(fetchError.response?.data?.message || 'Unable to load attendance')
@@ -233,7 +244,7 @@ const StudentAttendance = () => {
             <div>
               <h2 className="text-lg font-semibold text-gray-800">Live Gate QR Attendance</h2>
               <p className="text-sm text-gray-500 mt-1">
-                Scan the active gate QR during your class window. The code rotates every minute and only works for your scheduled routine period.
+                Scan the active Student QR during the time slot assigned to your semester. The code rotates every minute and works only for today.
               </p>
             </div>
             <div className="flex gap-3">
