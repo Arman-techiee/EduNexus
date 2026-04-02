@@ -7,6 +7,7 @@ const {
   refresh,
   logout,
   getMe,
+  getStudentIdQr,
   updateProfile,
   changePassword,
   completeProfile,
@@ -26,6 +27,7 @@ router.post('/reset-password', authLimiter, validate(schemas.auth.resetPassword)
 router.post('/refresh', authLimiter, refresh)
 router.post('/logout', logout)
 router.get('/me', protect, getMe)
+router.get('/student-id-qr', protect, allowRoles('STUDENT'), getStudentIdQr)
 router.patch('/profile', protect, validate(schemas.auth.updateProfile), updateProfile)
 router.post('/change-password', protect, validate(schemas.auth.changePassword), changePassword)
 router.patch('/complete-profile', protect, allowRoles('STUDENT'), validate(schemas.auth.completeProfile), completeProfile)

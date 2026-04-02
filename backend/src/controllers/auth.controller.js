@@ -1,5 +1,6 @@
 const crypto = require('crypto')
 const bcrypt = require('bcryptjs')
+const QRCode = require('qrcode')
 const prisma = require('../utils/prisma')
 const { enrollStudentInMatchingSubjects } = require('../utils/enrollment')
 const logger = require('../utils/logger')
@@ -304,6 +305,44 @@ const getMe = async (req, res) => {
   } catch (error) {
     logger.error(error.message, { stack: error.stack })
     res.status(500).json({ message: 'Something went wrong' })
+  }
+}
+
+const getStudentIdQr = async (req, res) => {
+  try {
+    if (req.user.role !== 'STUDENT') {
+      return res.status(403).json({ message: 'Only students can access the ID QR.' })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: getProfileSelect()
+    })
+
+    if (!user?.student) {
+      return res.status(404).json({ message: 'Student profile not found' })
+    }
+
+    const qrPayload = JSON.stringify({
+      type: 'STUDENT_ID_CARD',
+      studentId: user.student.id,
+      rollNumber: user.student.rollNumber,
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      department: user.student.department || '',
+      semester: user.student.semester,
+      section: user.student.section || ''
+    })
+
+    const qrCode = await QRCode.toDataURL(qrPayload, {
+      margin: 1,
+      width: 220
+    })
+
+    res.json({ qrCode })
+  } catch (error) {
+    res.internalError(error)
   }
 }
 
@@ -651,6 +690,7 @@ module.exports = {
   register,
   submitStudentIntake,
   login,
+  getStudentIdQr,
   getMe,
   updateProfile,
   changePassword,

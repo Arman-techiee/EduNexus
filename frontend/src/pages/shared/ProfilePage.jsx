@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { CreditCard, MapPin, Phone, QrCode } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
 import InstructorLayout from '../../layouts/InstructorLayout'
 import StudentLayout from '../../layouts/StudentLayout'
 import Alert from '../../components/Alert'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import PageHeader from '../../components/PageHeader'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../utils/api'
 import { getFriendlyErrorMessage } from '../../utils/errors'
@@ -11,6 +13,7 @@ import { getFriendlyErrorMessage } from '../../utils/errors'
 const ProfilePage = () => {
   const { user, updateUser } = useAuth()
   const [profile, setProfile] = useState(null)
+  const [studentQrCode, setStudentQrCode] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
@@ -42,6 +45,12 @@ const ProfilePage = () => {
       const res = await api.get('/auth/me')
       const currentUser = res.data.user
       setProfile(currentUser)
+      if (currentUser.role === 'STUDENT') {
+        const qrRes = await api.get('/auth/student-id-qr')
+        setStudentQrCode(qrRes.data.qrCode || '')
+      } else {
+        setStudentQrCode('')
+      }
       setForm({
         phone: currentUser.phone || '',
         address: currentUser.address || '',
@@ -94,13 +103,105 @@ const ProfilePage = () => {
 
   return renderLayout(
     <div className="mx-auto max-w-4xl p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">My Profile</h1>
-        <p className="mt-1 text-sm text-gray-500">Keep your contact details current while identity fields remain locked for authenticity.</p>
-      </div>
+      <PageHeader
+        title="My Profile"
+        subtitle="Keep your contact details current while identity fields remain locked for authenticity."
+        breadcrumbs={[user?.role === 'STUDENT' ? 'Student' : user?.role === 'INSTRUCTOR' ? 'Instructor' : 'Admin', 'Profile']}
+      />
 
       <Alert type="success" message={success} />
       <Alert type="error" message={error} />
+
+      {profile?.role === 'STUDENT' ? (
+        <div className="mb-8 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="relative overflow-hidden bg-[linear-gradient(135deg,#0f172a_0%,#172554_58%,#4338ca_100%)] px-6 py-6 text-white md:px-8">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.12),transparent_26%)]" />
+            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-stretch lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-2 backdrop-blur">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-sm font-black text-slate-900">
+                    {String(profile.name || 'S').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">EduNexus</p>
+                    <p className="text-sm font-medium text-white/90">Student Identity Card</p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/60">Card Holder</p>
+                  <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-white">{profile.name}</h2>
+                  <p className="mt-2 text-sm text-white/75">{profile.student?.rollNumber}</p>
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/12 bg-white/10 px-4 py-3 backdrop-blur">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Department</p>
+                    <p className="mt-2 text-sm font-semibold text-white">{profile.student?.department || 'Not assigned'}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/12 bg-white/10 px-4 py-3 backdrop-blur">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Semester / Section</p>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      Semester {profile.student?.semester || '--'}{profile.student?.section ? ` • Section ${profile.student.section}` : ''}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/12 bg-white/10 px-4 py-3 backdrop-blur">
+                    <div className="flex items-start gap-3">
+                      <Phone className="mt-0.5 h-4 w-4 text-white/70" />
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Contact Number</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{profile.phone || 'Not updated yet'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/12 bg-white/10 px-4 py-3 backdrop-blur">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="mt-0.5 h-4 w-4 text-white/70" />
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Location</p>
+                        <p className="mt-2 text-sm font-semibold text-white">
+                          {profile.student?.temporaryAddress || profile.address || 'Address not updated yet'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative flex w-full shrink-0 flex-col justify-between rounded-[26px] bg-white p-5 text-slate-900 shadow-2xl lg:w-[260px]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Student QR</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">Scan for details</p>
+                  </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                    <QrCode className="h-5 w-5" />
+                  </div>
+                </div>
+
+                <div className="mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  {studentQrCode ? (
+                    <img src={studentQrCode} alt="Student identity QR" className="w-full rounded-2xl bg-white" />
+                  ) : (
+                    <div className="flex aspect-square items-center justify-center rounded-2xl bg-white text-sm text-slate-400">
+                      Loading QR...
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    <CreditCard className="h-4 w-4" />
+                    <span>Identity Snapshot</span>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">{profile.email}</p>
+                  <p className="mt-1 text-xs text-slate-500">Keep this card visible when needed for campus verification.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <form onSubmit={saveProfile} className="rounded-3xl bg-white p-6 shadow-sm md:p-8">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
