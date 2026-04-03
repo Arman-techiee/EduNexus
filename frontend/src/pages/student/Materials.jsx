@@ -21,12 +21,7 @@ const StudentMaterials = () => {
     execute: executeSubjects
   } = useApi({ initialData: [] })
 
-  useEffect(() => {
-    fetchMaterials()
-    fetchSubjects()
-  }, [])
-
-  const fetchMaterials = async () => {
+  async function fetchMaterials() {
     await executeMaterials(
       () => api.get('/materials'),
       {
@@ -35,7 +30,7 @@ const StudentMaterials = () => {
     )
   }
 
-  const fetchSubjects = async () => {
+  async function fetchSubjects() {
     await executeSubjects(
       () => api.get('/subjects'),
       {
@@ -43,6 +38,11 @@ const StudentMaterials = () => {
       }
     )
   }
+
+  useEffect(() => {
+    fetchMaterials()
+    fetchSubjects()
+  }, [])
 
   const filtered = filterSubject
     ? materials.filter(m => m.subject?.code === filterSubject)

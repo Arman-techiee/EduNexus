@@ -57,8 +57,6 @@ const StudentRoutine = () => {
     }
   })
 
-  const todayClasses = byDay[activeDay] || []
-
   return (
     <StudentLayout>
       <div className="p-8">

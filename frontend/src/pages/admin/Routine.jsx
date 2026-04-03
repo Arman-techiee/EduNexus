@@ -143,7 +143,7 @@ const AdminRoutine = () => {
 
   // Assign color per subject
   const subjectColorMap = {}
-  routines.forEach((r, i) => {
+  routines.forEach((r) => {
     if (!subjectColorMap[r.subjectId]) {
       subjectColorMap[r.subjectId] = COLORS[Object.keys(subjectColorMap).length % COLORS.length]
     }

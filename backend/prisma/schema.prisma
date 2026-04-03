@@ -498,9 +498,13 @@ model RefreshToken {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenHash String   @unique
+  ipAddress String?
+  userAgent String?
+  lastUsedAt DateTime?
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([userId, revokedAt, expiresAt])
 }

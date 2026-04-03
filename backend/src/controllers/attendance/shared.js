@@ -1,12 +1,11 @@
 const prisma = require('../../utils/prisma')
 const crypto = require('crypto')
 const { recordAuditLog } = require('../../utils/audit')
+const { getRequiredSecret } = require('../../utils/security')
 
 const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE']
 const QR_VALIDITY_MINUTES = 15
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
-const QR_SIGNING_SECRET = process.env.QR_SIGNING_SECRET
-
 const getDayRange = (dateValue) => {
   const baseDate = dateValue ? new Date(dateValue) : new Date()
 
@@ -341,7 +340,7 @@ const parseQrPayload = (qrData) => {
     }
 
     const expectedSignature = crypto
-      .createHmac('sha256', QR_SIGNING_SECRET)
+      .createHmac('sha256', getRequiredSecret('QR_SIGNING_SECRET'))
       .update(JSON.stringify(payload))
       .digest('hex')
 
@@ -363,7 +362,7 @@ const parseQrPayload = (qrData) => {
 
 const createSignedQrPayload = (payload) => {
   const signature = crypto
-    .createHmac('sha256', QR_SIGNING_SECRET)
+    .createHmac('sha256', getRequiredSecret('QR_SIGNING_SECRET'))
     .update(JSON.stringify(payload))
     .digest('hex')
 

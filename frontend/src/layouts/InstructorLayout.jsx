@@ -20,10 +20,6 @@ const InstructorLayout = ({ children }) => {
   const navigate = useNavigate()
   const basePath = '/instructor'
 
-  if (user?.role === 'COORDINATOR') {
-    return <CoordinatorLayout>{children}</CoordinatorLayout>
-  }
-
   const sidebarItems = useMemo(() => ([
     { path: `${basePath}`, label: 'Dashboard', icon: LayoutDashboard, meta: 'Overview' },
     { path: `${basePath}/subjects`, label: 'Modules', icon: BookOpenText, meta: 'Assigned modules' },
@@ -32,6 +28,10 @@ const InstructorLayout = ({ children }) => {
     { path: `${basePath}/marks`, label: 'Exam Results', icon: FileText, meta: 'Subject exam marks' },
     { path: `${basePath}/profile`, label: 'Profile', icon: UserCircle2, meta: 'My account' }
   ]), [])
+
+  if (user?.role === 'COORDINATOR') {
+    return <CoordinatorLayout>{children}</CoordinatorLayout>
+  }
 
   const topItems = [
     { path: `${basePath}/routine`, label: 'Routine', icon: CalendarDays },

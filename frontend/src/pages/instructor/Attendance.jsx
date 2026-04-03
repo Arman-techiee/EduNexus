@@ -45,7 +45,6 @@ const Attendance = () => {
   const [roster, setRoster] = useState([])
   const [attendance, setAttendance] = useState([])
   const [summary, setSummary] = useState({ total: 0, present: 0, absent: 0, late: 0 })
-  const [monthlyDays, setMonthlyDays] = useState([])
   const [monthlyStudents, setMonthlyStudents] = useState([])
   const [monthlyMeta, setMonthlyMeta] = useState({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
   const [coordinatorRecords, setCoordinatorRecords] = useState([])
@@ -62,9 +61,9 @@ const Attendance = () => {
     if (isCoordinator) {
       setSelectedSubject('')
       if (!selectedSemester) {
-        setCoordinatorRecords([])
-        setMonthlyStudents([])
-        setMonthlyMeta({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
+      setCoordinatorRecords([])
+      setMonthlyStudents([])
+      setMonthlyMeta({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
         setSummary({ total: 0, present: 0, absent: 0, late: 0 })
         return
       }
@@ -75,7 +74,6 @@ const Attendance = () => {
     if (!selectedSubject || !selectedSemester || !selectedSection) {
       setRoster([])
       setAttendance([])
-      setMonthlyDays([])
       setMonthlyStudents([])
       setMonthlyMeta({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
       setSummary({ total: 0, present: 0, absent: 0, late: 0 })
@@ -128,33 +126,6 @@ const Attendance = () => {
     }
   }
 
-  const fetchMonthlyAttendanceReport = async () => {
-    try {
-      setLoading(true)
-      setError('')
-
-      const res = await api.get(`/attendance/subject/${selectedSubject}/monthly-report`, {
-        params: { month: selectedMonth }
-      })
-
-      setMonthlyDays(res.data.days)
-      setMonthlyStudents(res.data.students)
-      setMonthlyMeta({
-        monthLabel: res.data.monthLabel,
-        totalStudents: res.data.totalStudents,
-        totalRecords: res.data.totalRecords
-      })
-      setSummary(res.data.summary)
-      setRoster([])
-      setAttendance([])
-    } catch (fetchError) {
-      logger.error(fetchError)
-      setError(getFriendlyErrorMessage(fetchError, 'Unable to load the monthly attendance report.'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const fetchCoordinatorDepartmentReport = async () => {
     if (!selectedSemester) {
       setError('Please select a semester to load the department report.')
@@ -184,7 +155,6 @@ const Attendance = () => {
         section: res.data.section
       })
       setSummary(res.data.summary)
-      setMonthlyDays([])
       setRoster([])
       setAttendance([])
     } catch (fetchError) {

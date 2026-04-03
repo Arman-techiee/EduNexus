@@ -8,6 +8,7 @@ let authState = {
   user: null
 }
 const SESSION_HINT_KEY = 'edunexus_session_hint'
+let unauthorizedHandler = null
 
 const authSubscribers = new Set()
 
@@ -37,6 +38,16 @@ export const subscribeToAuthState = (listener) => {
   }
 }
 
+export const registerUnauthorizedHandler = (handler) => {
+  unauthorizedHandler = handler
+
+  return () => {
+    if (unauthorizedHandler === handler) {
+      unauthorizedHandler = null
+    }
+  }
+}
+
 export const hasSessionHint = () => {
   try {
     return window.localStorage.getItem(SESSION_HINT_KEY) === '1'
@@ -53,6 +64,17 @@ export const setAuthState = ({ token = null, user = null } = {}) => {
 
 export const clearAuthState = () => {
   setAuthState({ token: null, user: null })
+}
+
+const handleUnauthorizedRedirect = () => {
+  clearAuthState()
+
+  if (typeof unauthorizedHandler === 'function') {
+    unauthorizedHandler()
+    return
+  }
+
+  window.location.href = '/login'
 }
 
 export const resolveFileUrl = (fileUrl) => {
@@ -167,15 +189,13 @@ api.interceptors.response.use(
 
         return api(originalRequest)
       } catch (refreshError) {
-        clearAuthState()
-        window.location.href = '/login'
+        handleUnauthorizedRedirect()
         return Promise.reject(refreshError)
       }
     }
 
     if (error.response?.status === 401) {
-      clearAuthState()
-      window.location.href = '/login'
+      handleUnauthorizedRedirect()
     }
 
     return Promise.reject(error)

@@ -4,10 +4,12 @@ const QRCode = require('qrcode')
 const prisma = require('../utils/prisma')
 const { enrollStudentInMatchingSubjects } = require('../utils/enrollment')
 const logger = require('../utils/logger')
+const { recordAuditLog } = require('../utils/audit')
 const { buildUploadedFileUrl } = require('../utils/fileStorage')
 const { removeUploadedFile } = require('../middleware/upload.middleware')
 const { sendMail } = require('../utils/mailer')
 const { passwordResetTemplate } = require('../utils/emailTemplates')
+const { hashPassword, getRequiredSecret } = require('../utils/security')
 const {
   signAccessToken,
   signRefreshToken,
@@ -28,19 +30,52 @@ const buildAuthUser = (user) => ({
 })
 
 const isPasswordResetEnabled = () => process.env.ENABLE_PASSWORD_RESET === 'true'
-const QR_SIGNING_SECRET = process.env.QR_SIGNING_SECRET
 
 const createSignedQrPayload = (payload) => JSON.stringify({
   payload,
   signature: crypto
-    .createHmac('sha256', QR_SIGNING_SECRET)
+    .createHmac('sha256', getRequiredSecret('QR_SIGNING_SECRET'))
     .update(JSON.stringify(payload))
     .digest('hex')
 })
 
-const issueAuthSession = async (user, res, previousRefreshToken) => {
+const getRequestUserAgent = (req) => String(req.get('user-agent') || '').slice(0, 255) || null
+
+const getRequestIpAddress = (req) => {
+  const forwardedFor = req.headers['x-forwarded-for']
+  if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
+    return forwardedFor.split(',')[0].trim().slice(0, 64)
+  }
+
+  return String(req.ip || req.socket?.remoteAddress || '').slice(0, 64) || null
+}
+
+const generateStudentRollNumber = () => `STU-${crypto.randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()}`
+
+const generateUniqueStudentRollNumber = async () => {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const rollNumber = generateStudentRollNumber()
+    const existingStudent = await prisma.student.findUnique({
+      where: { rollNumber },
+      select: { id: true }
+    })
+
+    if (!existingStudent) {
+      return rollNumber
+    }
+  }
+
+  throw new Error('Unable to generate a unique student roll number')
+}
+
+const issueAuthSession = async (user, res, req, previousRefreshToken) => {
   const accessToken = signAccessToken(user)
   const refreshToken = signRefreshToken(user)
+  const requestMeta = {
+    ipAddress: getRequestIpAddress(req),
+    userAgent: getRequestUserAgent(req),
+    lastUsedAt: new Date()
+  }
 
   await prisma.$transaction(async (tx) => {
     if (previousRefreshToken) {
@@ -57,7 +92,8 @@ const issueAuthSession = async (user, res, previousRefreshToken) => {
       data: {
         userId: user.id,
         tokenHash: hashToken(refreshToken),
-        expiresAt: getRefreshTokenExpiry()
+        expiresAt: getRefreshTokenExpiry(),
+        ...requestMeta
       }
     })
   })
@@ -135,7 +171,8 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists with this email' })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await hashPassword(password)
+    const rollNumber = await generateUniqueStudentRollNumber()
 
     const user = await prisma.user.create({
       data: {
@@ -151,7 +188,7 @@ const register = async (req, res) => {
     const student = await prisma.student.create({
       data: {
         userId: user.id,
-        rollNumber: `STU${Date.now()}`,
+        rollNumber,
         semester: 1
       }
     })
@@ -162,7 +199,7 @@ const register = async (req, res) => {
       department: student.department
     })
 
-    const token = await issueAuthSession(user, res)
+    const token = await issueAuthSession(user, res, req)
 
     res.status(201).json({
       message: 'User registered successfully!',
@@ -291,7 +328,18 @@ const login = async (req, res) => {
       })
     }
 
-    const token = await issueAuthSession(user, res)
+    const token = await issueAuthSession(user, res, req)
+
+    await recordAuditLog({
+      actorId: user.id,
+      actorRole: user.role,
+      action: 'AUTH_LOGIN',
+      entityType: 'AuthSession',
+      metadata: {
+        ipAddress: getRequestIpAddress(req),
+        userAgent: getRequestUserAgent(req)
+      }
+    })
 
     res.json({
       message: user.mustChangePassword
@@ -482,7 +530,7 @@ const changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Current password is incorrect' })
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    const hashedPassword = await hashPassword(newPassword)
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -655,7 +703,7 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Password reset link is invalid or expired' })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await hashPassword(password)
 
     await prisma.user.update({
       where: { id: user.id },
@@ -708,7 +756,7 @@ const refresh = async (req, res) => {
       return res.status(401).json({ message: 'Refresh token is invalid or expired' })
     }
 
-    const token = await issueAuthSession(storedRefreshToken.user, res, refreshToken)
+    const token = await issueAuthSession(storedRefreshToken.user, res, req, refreshToken)
 
     res.json({
       message: 'Token refreshed successfully',
@@ -740,7 +788,105 @@ const logout = async (req, res) => {
       expires: new Date(0)
     })
 
+    if (req.user?.id) {
+      await recordAuditLog({
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        action: 'AUTH_LOGOUT',
+        entityType: 'AuthSession',
+        metadata: {
+          ipAddress: getRequestIpAddress(req),
+          userAgent: getRequestUserAgent(req)
+        }
+      })
+    }
+
     res.json({ message: 'Logged out successfully' })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const getActivity = async (req, res) => {
+  try {
+    const currentRefreshToken = req.cookies?.refreshToken
+    const currentTokenHash = currentRefreshToken ? hashToken(currentRefreshToken) : null
+
+    const [activity, sessions] = await Promise.all([
+      prisma.auditLog.findMany({
+        where: { actorId: req.user.id },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      }),
+      prisma.refreshToken.findMany({
+        where: {
+          userId: req.user.id,
+          revokedAt: null,
+          expiresAt: { gt: new Date() }
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          tokenHash: true,
+          ipAddress: true,
+          userAgent: true,
+          createdAt: true,
+          lastUsedAt: true,
+          expiresAt: true
+        }
+      })
+    ])
+
+    res.json({
+      activity: activity.map((item) => ({
+        id: item.id,
+        action: item.action,
+        entityType: item.entityType,
+        metadata: item.metadata,
+        createdAt: item.createdAt
+      })),
+      sessions: sessions.map((session) => ({
+        id: session.id,
+        ipAddress: session.ipAddress,
+        userAgent: session.userAgent,
+        createdAt: session.createdAt,
+        lastUsedAt: session.lastUsedAt,
+        expiresAt: session.expiresAt,
+        current: currentTokenHash ? session.tokenHash === currentTokenHash : false
+      }))
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const logoutAll = async (req, res) => {
+  try {
+    await prisma.refreshToken.updateMany({
+      where: {
+        userId: req.user.id,
+        revokedAt: null
+      },
+      data: { revokedAt: new Date() }
+    })
+
+    res.clearCookie('refreshToken', {
+      ...getRefreshCookieOptions(),
+      expires: new Date(0)
+    })
+
+    await recordAuditLog({
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      action: 'AUTH_LOGOUT_ALL_DEVICES',
+      entityType: 'AuthSession',
+      metadata: {
+        ipAddress: getRequestIpAddress(req),
+        userAgent: getRequestUserAgent(req)
+      }
+    })
+
+    res.json({ message: 'Signed out from all devices successfully' })
   } catch (error) {
     res.internalError(error)
   }
@@ -759,5 +905,7 @@ module.exports = {
   forgotPassword,
   resetPassword,
   refresh,
-  logout
+  logout,
+  getActivity,
+  logoutAll
 }

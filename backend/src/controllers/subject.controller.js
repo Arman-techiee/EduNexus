@@ -1,6 +1,5 @@
 const prisma = require('../utils/prisma')
 const { getPagination } = require('../utils/pagination')
-const logger = require('../utils/logger')
 const { ensureDepartmentExists } = require('./department.controller')
 const {
   enrollMatchingStudentsInSubject,

@@ -55,8 +55,6 @@ const InstructorRoutine = () => {
     }
   })
 
-  const todayClasses = byDay[activeDay] || []
-
   return (
     <InstructorLayout>
       <div className="p-8">

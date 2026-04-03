@@ -23,10 +23,6 @@ const AdminLayout = ({ children }) => {
   const navigate = useNavigate()
   const basePath = '/admin'
 
-  if (user?.role === 'COORDINATOR') {
-    return <CoordinatorLayout>{children}</CoordinatorLayout>
-  }
-
   const sidebarItems = useMemo(() => ([
     { path: `${basePath}`, label: 'Dashboard', icon: LayoutDashboard, meta: 'Overview' },
     { path: `${basePath}/users`, label: 'Users', icon: Users, meta: 'People and roles' },
@@ -36,6 +32,10 @@ const AdminLayout = ({ children }) => {
     { path: `${basePath}/student-qr`, label: 'Student QR', icon: Percent, meta: 'Gate scan windows' },
     { path: `${basePath}/profile`, label: 'Profile', icon: UserCircle2, meta: 'My account' }
   ]), [])
+
+  if (user?.role === 'COORDINATOR') {
+    return <CoordinatorLayout>{children}</CoordinatorLayout>
+  }
 
   const topItems = [
     { path: `${basePath}/routine`, label: 'Routine', icon: CalendarDays },

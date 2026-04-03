@@ -128,7 +128,7 @@ const Users = () => {
     }
   }
 
-  const handleCreateUser = async (e) => {
+  const handleCreateUser = async () => {
     setError('')
     try {
       const endpoint = modalType === 'coordinator'

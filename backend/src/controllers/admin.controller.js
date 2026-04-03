@@ -1,5 +1,4 @@
 const prisma = require('../utils/prisma')
-const bcrypt = require('bcryptjs')
 const { enrollStudentInMatchingSubjects } = require('../utils/enrollment')
 const { getPagination } = require('../utils/pagination')
 const logger = require('../utils/logger')
@@ -7,8 +6,7 @@ const { ensureDepartmentExists } = require('./department.controller')
 const { recordAuditLog } = require('../utils/audit')
 const { sendMail } = require('../utils/mailer')
 const { welcomeTemplate } = require('../utils/emailTemplates')
-
-const DEFAULT_STUDENT_PASSWORD = process.env.DEFAULT_STUDENT_PASSWORD || 'password'
+const { hashPassword, getStudentTemporaryPassword } = require('../utils/security')
 
 const buildContainsSearch = (search) => ({
   contains: search,
@@ -199,7 +197,7 @@ const createCoordinator = async (req, res) => {
       }
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await hashPassword(password)
 
     const user = await prisma.user.create({
       data: {
@@ -255,7 +253,7 @@ const createGatekeeper = async (req, res) => {
       return res.status(400).json({ message: 'Email already exists' })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await hashPassword(password)
 
     const user = await prisma.user.create({
       data: {
@@ -311,7 +309,7 @@ const createInstructor = async (req, res) => {
       }
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await hashPassword(password)
 
     const user = await prisma.user.create({
       data: {
@@ -385,7 +383,8 @@ const createStudent = async (req, res) => {
       }
     }
 
-    const hashedPassword = await bcrypt.hash(DEFAULT_STUDENT_PASSWORD, 10)
+    const temporaryPassword = getStudentTemporaryPassword()
+    const hashedPassword = await hashPassword(temporaryPassword)
 
     const user = await prisma.user.create({
       data: {
@@ -424,6 +423,7 @@ const createStudent = async (req, res) => {
         role: user.role,
         rollNumber: user.student.rollNumber,
         semester: user.student.semester,
+        temporaryPassword,
       }
     })
 
@@ -720,7 +720,8 @@ const createStudentFromApplication = async (req, res) => {
       return res.status(400).json({ message: 'Student ID already exists' })
     }
 
-    const hashedPassword = await bcrypt.hash(DEFAULT_STUDENT_PASSWORD, 10)
+    const temporaryPassword = getStudentTemporaryPassword()
+    const hashedPassword = await hashPassword(temporaryPassword)
 
     const user = await prisma.user.create({
       data: {
@@ -779,7 +780,7 @@ const createStudentFromApplication = async (req, res) => {
     const { subject, html, text } = welcomeTemplate({
       name: user.name,
       email: user.email,
-      tempPassword: DEFAULT_STUDENT_PASSWORD
+      tempPassword: temporaryPassword
     })
 
     await sendMail({ to: user.email, subject, html, text })

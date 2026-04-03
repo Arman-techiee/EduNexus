@@ -1,0 +1,48 @@
+const test = require('node:test')
+const assert = require('node:assert/strict')
+
+const tokenModulePath = require.resolve('../src/utils/token')
+
+const loadTokenUtils = () => {
+  delete require.cache[tokenModulePath]
+  return require(tokenModulePath)
+}
+
+test('signAccessToken embeds the access token type', () => {
+  process.env.JWT_SECRET = 'test-access-secret'
+  process.env.JWT_REFRESH_SECRET = 'test-refresh-secret'
+  process.env.ACCESS_TOKEN_EXPIRES_IN = '15m'
+
+  const { signAccessToken } = loadTokenUtils()
+  const token = signAccessToken({ id: 'user-1', role: 'STUDENT' })
+  const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'))
+
+  assert.equal(payload.type, 'access')
+  assert.equal(payload.id, 'user-1')
+  assert.equal(payload.role, 'STUDENT')
+})
+
+test('signRefreshToken and verifyRefreshToken round-trip refresh tokens', () => {
+  process.env.JWT_SECRET = 'test-access-secret'
+  process.env.JWT_REFRESH_SECRET = 'test-refresh-secret'
+  process.env.REFRESH_TOKEN_EXPIRES_DAYS = '7'
+
+  const { signRefreshToken, verifyRefreshToken } = loadTokenUtils()
+  const token = signRefreshToken({ id: 'user-9', role: 'ADMIN' })
+  const decoded = verifyRefreshToken(token)
+
+  assert.equal(decoded.type, 'refresh')
+  assert.equal(decoded.id, 'user-9')
+  assert.equal(decoded.role, 'ADMIN')
+})
+
+test('hashToken is deterministic and produces a sha256 digest', () => {
+  const { hashToken } = loadTokenUtils()
+
+  const left = hashToken('sample-token')
+  const right = hashToken('sample-token')
+
+  assert.equal(left, right)
+  assert.equal(left.length, 64)
+  assert.match(left, /^[a-f0-9]+$/)
+})

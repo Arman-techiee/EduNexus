@@ -1,5 +1,4 @@
 const prisma = require('../utils/prisma')
-const logger = require('../utils/logger')
 const { buildUploadedFileUrl } = require('../utils/fileStorage')
 const ExcelJS = require('exceljs')
 const PDFDocument = require('pdfkit')

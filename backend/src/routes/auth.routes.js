@@ -13,7 +13,9 @@ const {
   changePassword,
   completeProfile,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getActivity,
+  logoutAll
 } = require('../controllers/auth.controller')
 const { protect, allowRoles } = require('../middleware/auth.middleware')
 const { authLimiter } = require('../middleware/rateLimit.middleware')
@@ -28,7 +30,9 @@ router.post('/forgot-password', authLimiter, validate(schemas.auth.forgotPasswor
 router.post('/reset-password', authLimiter, validate(schemas.auth.resetPassword), resetPassword)
 router.post('/refresh', authLimiter, refresh)
 router.post('/logout', logout)
+router.post('/logout-all', protect, logoutAll)
 router.get('/me', protect, getMe)
+router.get('/activity', protect, getActivity)
 router.get('/student-id-qr', protect, allowRoles('STUDENT'), getStudentIdQr)
 router.post('/avatar', protect, uploadImage.single('avatar'), validateUploadedImage, uploadAvatar)
 router.patch('/profile', protect, validate(schemas.auth.updateProfile), updateProfile)

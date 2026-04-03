@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Camera, UserRound } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import AdminLayout from '../../layouts/AdminLayout'
 import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import InstructorLayout from '../../layouts/InstructorLayout'
@@ -9,16 +10,41 @@ import LoadingSpinner from '../../components/LoadingSpinner'
 import PageHeader from '../../components/PageHeader'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../context/AuthContext'
-import api, { resolveFileUrl } from '../../utils/api'
+import api, { clearAuthState, resolveFileUrl } from '../../utils/api'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+
+const formatActivityLabel = (action) => ({
+  AUTH_LOGIN: 'Signed in',
+  AUTH_LOGOUT: 'Signed out',
+  AUTH_LOGOUT_ALL_DEVICES: 'Signed out all devices'
+}[action] || action.replaceAll('_', ' ').toLowerCase())
+
+const getSessionLabel = (userAgent) => {
+  const normalized = String(userAgent || '').toLowerCase()
+
+  if (normalized.includes('edg')) return 'Microsoft Edge'
+  if (normalized.includes('chrome')) return 'Google Chrome'
+  if (normalized.includes('firefox')) return 'Mozilla Firefox'
+  if (normalized.includes('safari') && !normalized.includes('chrome')) return 'Safari'
+  if (normalized.includes('android')) return 'Android device'
+  if (normalized.includes('iphone') || normalized.includes('ipad')) return 'Apple device'
+
+  return userAgent || 'Unknown device'
+}
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth()
+  const navigate = useNavigate()
   const { showToast } = useToast()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [activityLoading, setActivityLoading] = useState(true)
+  const [activityError, setActivityError] = useState('')
+  const [activityItems, setActivityItems] = useState([])
+  const [sessions, setSessions] = useState([])
+  const [revokingSessions, setRevokingSessions] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
   const [selectedAvatarFile, setSelectedAvatarFile] = useState(null)
@@ -62,9 +88,17 @@ const ProfilePage = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true)
-      const res = await api.get('/auth/me')
-      const currentUser = res.data.user
+      setActivityLoading(true)
+      setActivityError('')
+
+      const [profileRes, activityRes] = await Promise.all([
+        api.get('/auth/me'),
+        api.get('/auth/activity')
+      ])
+      const currentUser = profileRes.data.user
       setProfile(currentUser)
+      setActivityItems(activityRes.data.activity || [])
+      setSessions(activityRes.data.sessions || [])
       setForm({
         phone: currentUser.phone || '',
         address: currentUser.address || '',
@@ -83,8 +117,10 @@ const ProfilePage = () => {
       })
     } catch (requestError) {
       setError(getFriendlyErrorMessage(requestError, 'Unable to load the profile right now.'))
+      setActivityError(getFriendlyErrorMessage(requestError, 'Unable to load recent activity right now.'))
     } finally {
       setLoading(false)
+      setActivityLoading(false)
     }
   }
 
@@ -148,6 +184,20 @@ const ProfilePage = () => {
       setError(getFriendlyErrorMessage(requestError, 'Unable to upload your profile photo right now.'))
     } finally {
       setUploadingAvatar(false)
+    }
+  }
+
+  const revokeAllSessions = async () => {
+    try {
+      setRevokingSessions(true)
+      setActivityError('')
+      await api.post('/auth/logout-all')
+      clearAuthState()
+      navigate('/login', { replace: true })
+    } catch (requestError) {
+      setActivityError(getFriendlyErrorMessage(requestError, 'Unable to sign out all devices right now.'))
+    } finally {
+      setRevokingSessions(false)
     }
   }
 
@@ -296,6 +346,83 @@ const ProfilePage = () => {
           </button>
         </div>
       </form>
+
+      <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm md:p-8">
+        <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">Recent activity</h2>
+            <p className="mt-1 text-sm text-slate-500">Track sign-ins and review active sessions tied to your account.</p>
+          </div>
+          <button
+            type="button"
+            onClick={revokeAllSessions}
+            disabled={revokingSessions || sessions.length === 0}
+            className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {revokingSessions ? 'Signing out...' : 'Sign out all devices'}
+          </button>
+        </div>
+
+        <Alert type="error" message={activityError} />
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Timeline</h3>
+            {activityLoading ? (
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">Loading account activity...</div>
+            ) : activityItems.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">No recent account activity recorded yet.</div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {activityItems.map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{formatActivityLabel(item.action)}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {new Date(item.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      {item.metadata?.ipAddress ? (
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500">{item.metadata.ipAddress}</span>
+                      ) : null}
+                    </div>
+                    {item.metadata?.userAgent ? (
+                      <p className="mt-3 text-sm text-slate-600">{getSessionLabel(item.metadata.userAgent)}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Active sessions</h3>
+            {activityLoading ? (
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">Loading active sessions...</div>
+            ) : sessions.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">No active sessions found.</div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {sessions.map((session) => (
+                  <div key={session.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-slate-900">{getSessionLabel(session.userAgent)}</p>
+                      {session.current ? (
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Current</span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">IP: {session.ipAddress || 'Unknown'}</p>
+                    <p className="mt-1 text-xs text-slate-500">Started: {new Date(session.createdAt).toLocaleString()}</p>
+                    <p className="mt-1 text-xs text-slate-500">Last used: {session.lastUsedAt ? new Date(session.lastUsedAt).toLocaleString() : 'Not tracked yet'}</p>
+                    <p className="mt-1 text-xs text-slate-500">Expires: {new Date(session.expiresAt).toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

@@ -16,7 +16,6 @@ import { useAuth } from '../../context/AuthContext'
 import logger from '../../utils/logger'
 
 const examTypes = ['INTERNAL', 'MIDTERM', 'FINAL', 'PREBOARD', 'PRACTICAL']
-const studentPublishableExamTypes = examTypes.filter((type) => type !== 'PRACTICAL')
 
 const examTypeLabels = {
   INTERNAL: 'Internal',

@@ -31,8 +31,6 @@ const getGradePointFromPercentage = (percentage) => {
   return 0.0
 }
 
-const getGradePointFromMark = (mark) => getGradePointFromPercentage(getPercentage(mark.obtainedMarks, mark.totalMarks))
-
 const decorateMark = (mark) => {
   const percentage = getPercentage(mark.obtainedMarks, mark.totalMarks)
 

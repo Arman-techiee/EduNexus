@@ -1,6 +1,5 @@
 const prisma = require('../utils/prisma')
 const { getPagination } = require('../utils/pagination')
-const logger = require('../utils/logger')
 const { recordAuditLog } = require('../utils/audit')
 const { sanitizePlainText } = require('../utils/sanitize')
 const { createNotifications } = require('../utils/notifications')

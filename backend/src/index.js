@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const cookieParser = require('cookie-parser')
 const dotenv = require('dotenv')
+const helmet = require('helmet')
 const logger = require('./utils/logger')
 const validateEnv = require('./utils/validateEnv')
 const { apiLimiter } = require('./middleware/rateLimit.middleware')
@@ -18,8 +19,14 @@ const app = express()
 const runtimeEnv = getRuntimeEnv()
 const isDevelopment = runtimeEnv === 'development'
 const allowedOrigins = getTrustedOrigins()
+let server = null
+let maintenance = null
+let isShuttingDown = false
 
 app.use(requestId)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}))
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true)
@@ -103,7 +110,7 @@ app.get('/', (req, res) => {
   res.json({ message: 'EduNexus backend is running! 🚀' })
 })
 
-app.use('*', (req, res) => {
+app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' })
 })
 
@@ -118,22 +125,28 @@ app.use((error, req, res, _next) => {
 })
 
 const PORT = process.env.PORT || 5000
-const maintenance = scheduleMaintenance(prisma)
 
-const server = app.listen(PORT, () => {
-  logger.info('EduNexus server running', { port: PORT })
-})
+const startServer = () => {
+  if (server) {
+    return server
+  }
 
-let isShuttingDown = false
+  maintenance = scheduleMaintenance(prisma)
+  server = app.listen(PORT, () => {
+    logger.info('EduNexus server running', { port: PORT })
+  })
+
+  return server
+}
 
 const shutdown = async (signal) => {
-  if (isShuttingDown) {
+  if (isShuttingDown || !server) {
     return
   }
 
   isShuttingDown = true
   logger.info('Received shutdown signal', { signal })
-  maintenance.stop()
+  maintenance?.stop()
 
   server.close(async () => {
     try {
@@ -153,3 +166,13 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
   void shutdown('SIGINT')
 })
+
+if (require.main === module) {
+  startServer()
+}
+
+module.exports = {
+  app,
+  startServer,
+  shutdown
+}

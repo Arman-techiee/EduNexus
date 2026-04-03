@@ -8,6 +8,7 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "postinstall": "prisma generate",
+    "lint": "eslint .",
     "test": "node --test",
     "start": "node src/index.js",
     "dev": "nodemon src/index.js"
@@ -26,6 +27,7 @@
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.2",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "nodemailer": "^8.0.4",
@@ -33,10 +35,17 @@
     "pg": "^8.20.0",
     "prisma": "^7.6.0",
     "qrcode": "^1.5.4",
+    "rate-limit-redis": "^4.3.1",
+    "redis": "^5.11.0",
     "winston": "^3.19.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "eslint-plugin-n": "^17.23.1",
+    "globals": "^17.4.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.1.4"
   }
 }

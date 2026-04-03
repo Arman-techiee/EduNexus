@@ -19,6 +19,18 @@ const QrScanPanel = ({
   const streamRef = useRef(null)
   const intervalRef = useRef(null)
 
+  function stopScanner() {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+  }
+
   useEffect(() => {
     setScannerSupported(
       typeof window !== 'undefined' &&
@@ -30,18 +42,6 @@ const QrScanPanel = ({
       stopScanner()
     }
   }, [])
-
-  const stopScanner = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
-    }
-  }
 
   const handleSubmit = async (qrValue) => {
     if (!qrValue?.trim()) return

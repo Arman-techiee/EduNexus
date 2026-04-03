@@ -1,12 +1,23 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { API_BASE_URL, clearAuthState, getAuthState, hasSessionHint, refreshSession, setAuthState, subscribeToAuthState } from '../utils/api'
+import { useNavigate } from 'react-router-dom'
+import {
+  API_BASE_URL,
+  clearAuthState,
+  getAuthState,
+  hasSessionHint,
+  refreshSession,
+  registerUnauthorizedHandler,
+  setAuthState,
+  subscribeToAuthState
+} from '../utils/api'
 
 const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
+  const navigate = useNavigate()
   const [user, setUser] = useState(getAuthState().user)
   const [token, setToken] = useState(getAuthState().token)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => hasSessionHint())
 
   useEffect(() => {
     let isMounted = true
@@ -18,12 +29,15 @@ export const AuthProvider = ({ children }) => {
       setToken(nextState.token)
       setUser(nextState.user)
     })
+    const unregisterUnauthorizedHandler = registerUnauthorizedHandler(() => {
+      navigate('/login', { replace: true })
+    })
 
     if (!hasSessionHint()) {
-      setLoading(false)
       return () => {
         isMounted = false
         unsubscribe()
+        unregisterUnauthorizedHandler()
       }
     }
 
@@ -40,8 +54,9 @@ export const AuthProvider = ({ children }) => {
     return () => {
       isMounted = false
       unsubscribe()
+      unregisterUnauthorizedHandler()
     }
-  }, [])
+  }, [navigate])
 
   const login = (userData, userToken) => {
     setAuthState({ user: userData, token: userToken })
@@ -53,7 +68,7 @@ export const AuthProvider = ({ children }) => {
       credentials: 'include'
     }).catch(() => null).finally(() => {
       clearAuthState()
-      window.location.href = '/login'
+      navigate('/login', { replace: true })
     })
   }
 
