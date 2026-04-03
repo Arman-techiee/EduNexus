@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { BookOpenText, ClipboardList, Files, GraduationCap, Users } from 'lucide-react'
+import { BookOpenText, ClipboardList, Files, GraduationCap, Percent, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import InstructorLayout from '../../layouts/InstructorLayout'
 import PageHeader from '../../components/PageHeader'
 import api from '../../utils/api'
@@ -44,9 +45,9 @@ const InstructorSubjects = () => {
     <InstructorLayout>
       <div className="p-8">
         <PageHeader
-          title="My Subjects"
-          subtitle="Subjects assigned to you"
-          breadcrumbs={['Instructor', 'Subjects']}
+          title="My Modules"
+          subtitle="Open a module, manage its study materials, track attendance, and handle assignments from one place."
+          breadcrumbs={['Instructor', 'Modules']}
         />
 
         {loading ? (
@@ -58,9 +59,9 @@ const InstructorSubjects = () => {
                 <div className={`h-1.5 bg-gradient-to-r ${departmentBar(subject.department)}`} />
                 <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
-                    {subject.code}
-                  </span>
+                    <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
+                      {subject.code}
+                    </span>
                   <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
                     Sem {subject.semester}
                   </span>
@@ -76,11 +77,15 @@ const InstructorSubjects = () => {
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1">
                     <Files className="h-3.5 w-3.5" />
-                    <span>{subject._count?.attendances} records</span>
+                    <span>{subject._count?.materials} materials</span>
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1">
                     <Users className="h-3.5 w-3.5" />
                     <span>{subject._count?.enrollments || 0} students</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1">
+                    <Percent className="h-3.5 w-3.5" />
+                    <span>{subject._count?.attendances} attendance records</span>
                   </span>
                 </div>
                 {subject.department && (
@@ -97,6 +102,32 @@ const InstructorSubjects = () => {
                     <p className="truncate text-sm font-semibold text-slate-900">{subject.instructor?.user?.name || 'Assigned instructor'}</p>
                   </div>
                   <GraduationCap className="ml-auto h-5 w-5 text-slate-300" />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Link
+                    to={`/instructor/materials?subject=${subject.id}`}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Materials
+                  </Link>
+                  <Link
+                    to={`/instructor/assignments?subject=${subject.id}`}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Assignments
+                  </Link>
+                  <Link
+                    to={`/instructor/attendance?subject=${subject.id}&semester=${subject.semester}`}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Attendance
+                  </Link>
+                  <Link
+                    to={`/instructor/marks?subject=${subject.id}`}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Exam Marks
+                  </Link>
                 </div>
                 </div>
               </div>

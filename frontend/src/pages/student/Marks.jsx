@@ -1,25 +1,70 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import StudentLayout from '../../layouts/StudentLayout'
 import api from '../../utils/api'
 import PageHeader from '../../components/PageHeader'
 import Pagination from '../../components/Pagination'
+import EmptyState from '../../components/EmptyState'
 import logger from '../../utils/logger'
+
+const examTypeLabels = {
+  INTERNAL: 'Internal',
+  MIDTERM: 'Mid-Term',
+  FINAL: 'Final',
+  PREBOARD: 'Preboard'
+}
+
+const gradeTone = (grade) => {
+  if (grade === 'A+' || grade === 'A') return 'text-green-600 bg-green-50'
+  if (grade === 'B+' || grade === 'B') return 'text-blue-600 bg-blue-50'
+  if (grade === 'C+' || grade === 'C') return 'text-amber-600 bg-amber-50'
+  return 'text-red-600 bg-red-50'
+}
+
 const StudentMarks = () => {
   const [marks, setMarks] = useState([])
-  const [summary, setSummary] = useState([])
+  const [resultSheet, setResultSheet] = useState({
+    subjects: [],
+    totals: { obtainedMarks: 0, totalMarks: 0 },
+    overallPercentage: 0,
+    overallGrade: '-',
+    overallGpa: 0
+  })
+  const [availableExamTypes, setAvailableExamTypes] = useState([])
+  const [selectedExamType, setSelectedExamType] = useState('')
   const [page, setPage] = useState(1)
   const [limit] = useState(10)
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchMarks() }, [page])
+  useEffect(() => {
+    void fetchMarks()
+  }, [page, selectedExamType])
 
   const fetchMarks = async () => {
     try {
-      const res = await api.get(`/marks/my?page=${page}&limit=${limit}`)
-      setMarks(res.data.marks)
-      setSummary(res.data.summary)
-      setTotal(res.data.total)
+      setLoading(true)
+      const res = await api.get('/marks/my', {
+        params: {
+          page,
+          limit,
+          ...(selectedExamType ? { examType: selectedExamType } : {})
+        }
+      })
+
+      setMarks(res.data.marks || [])
+      setResultSheet(res.data.resultSheet || {
+        subjects: [],
+        totals: { obtainedMarks: 0, totalMarks: 0 },
+        overallPercentage: 0,
+        overallGrade: '-',
+        overallGpa: 0
+      })
+      setAvailableExamTypes(res.data.availableExamTypes || [])
+      setTotal(res.data.total || 0)
+
+      if (!selectedExamType && res.data.examType) {
+        setSelectedExamType(res.data.examType)
+      }
     } catch (error) {
       logger.error(error)
     } finally {
@@ -27,112 +72,143 @@ const StudentMarks = () => {
     }
   }
 
-  const examTypeColors = {
-    INTERNAL: 'bg-blue-100 text-blue-700',
-    MIDTERM: 'bg-purple-100 text-purple-700',
-    FINAL: 'bg-red-100 text-red-700',
-    PRACTICAL: 'bg-green-100 text-green-700',
-  }
-
   return (
     <StudentLayout>
       <div className="p-8">
         <PageHeader
-          title="Examination Results"
-          subtitle="Review your published examination performance by subject and assessment."
+          title="Exam Results"
+          subtitle="Select a published exam result to view your overall GPA and subject-wise marks. Practical marks are not shown to students."
           breadcrumbs={['Student', 'Results']}
         />
 
         {loading ? (
-          <div className="text-center text-gray-500 py-8">Loading...</div>
+          <div className="py-8 text-center text-gray-500">Loading...</div>
         ) : (
           <>
-            {/* Result Summary by Subject */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {summary.map((item, index) => (
-                <div key={index} className="bg-white rounded-2xl shadow-sm p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{item.subject}</h3>
-                      <p className="text-xs text-gray-500">{item.code}</p>
-                    </div>
+            <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
+              <label className="mb-3 block text-sm font-medium text-slate-600">Select Exam Result</label>
+              <select
+                value={selectedExamType}
+                onChange={(event) => {
+                  setSelectedExamType(event.target.value)
+                  setPage(1)
+                }}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                {availableExamTypes.length === 0 ? (
+                  <option value="">No published exams available</option>
+                ) : (
+                  availableExamTypes.map((examType) => (
+                    <option key={examType} value={examType}>
+                      {examTypeLabels[examType] || examType}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            {resultSheet.subjects.length === 0 ? (
+              <EmptyState
+                icon="📄"
+                title="No published result found"
+                description="Once the coordinator publishes your selected exam result, it will appear here with subject-wise marks and overall GPA."
+              />
+            ) : (
+              <>
+                <div className="mb-6 grid gap-4 md:grid-cols-4">
+                  <div className="rounded-2xl bg-white p-6 shadow-sm">
+                    <p className="text-sm text-gray-500">Exam</p>
+                    <p className="mt-2 text-xl font-black text-slate-900">
+                      {examTypeLabels[selectedExamType] || selectedExamType}
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    {item.exams.map((exam, i) => (
-                      <div key={i} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${examTypeColors[exam.examType]}`}>
-                          {exam.examType}
-                        </span>
-                        <div className="text-right">
-                          <span className={`font-bold text-sm ${
-                            parseFloat(exam.percentage) >= 70 ? 'text-green-600' :
-                            parseFloat(exam.percentage) >= 40 ? 'text-orange-500' :
-                            'text-red-600'}`}>
-                            {exam.obtained}/{exam.total}
+                  <div className="rounded-2xl bg-white p-6 shadow-sm">
+                    <p className="text-sm text-gray-500">Overall GPA</p>
+                    <p className="mt-2 text-3xl font-black text-slate-900">{resultSheet.overallGpa.toFixed(2)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-6 shadow-sm">
+                    <p className="text-sm text-gray-500">Overall Grade</p>
+                    <p className="mt-2 text-3xl font-black text-slate-900">{resultSheet.overallGrade}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white p-6 shadow-sm">
+                    <p className="text-sm text-gray-500">Combined Score</p>
+                    <p className="mt-2 text-xl font-black text-slate-900">
+                      {resultSheet.totals.obtainedMarks}/{resultSheet.totals.totalMarks}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{resultSheet.overallPercentage}% overall</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+                  <div className="border-b p-6">
+                    <h2 className="text-lg font-semibold text-slate-900">Subject-wise Result List</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Published marks for all subjects in the selected exam that belong to your enrolled semester modules.
+                    </p>
+                  </div>
+
+                  <div className="divide-y divide-slate-100">
+                    {resultSheet.subjects.map((subject) => (
+                      <div key={subject.id} className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">{subject.subjectName}</p>
+                          <p className="mt-1 text-xs text-slate-500">{subject.subjectCode}</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                            Marks: {subject.obtainedMarks}/{subject.totalMarks}
                           </span>
-                          <span className="text-xs text-gray-500 ml-2">({exam.percentage})</span>
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                            {subject.percentage}%
+                          </span>
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${gradeTone(subject.grade)}`}>
+                            Grade: {subject.grade}
+                          </span>
+                          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                            GPA: {subject.gradePoint.toFixed(1)}
+                          </span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              ))}
-              {summary.length === 0 && (
-                <div className="col-span-2 text-center py-12 text-gray-400">
-                  No examination results have been published yet
-                </div>
-              )}
-            </div>
 
-            {/* Detailed Result Ledger */}
-            {marks.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="p-6 border-b">
-                  <h2 className="text-lg font-semibold text-gray-800">Detailed Result Ledger</h2>
-                  <p className="text-sm text-gray-500 mt-1">Official assessment records for each published examination component.</p>
-                </div>
-                <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px]">
-                  <thead className="bg-gray-50">
-                    <tr className="text-left text-sm text-gray-500">
-                      <th className="px-6 py-4">Subject</th>
-                      <th className="px-6 py-4">Exam Type</th>
-                      <th className="px-6 py-4">Obtained</th>
-                      <th className="px-6 py-4">Total</th>
-                      <th className="px-6 py-4">Percentage</th>
-                      <th className="px-6 py-4">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {marks.map((mark) => (
-                      <tr key={mark.id} className="border-t hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-gray-800 text-sm">{mark.subject?.name}</p>
-                          <p className="text-xs text-gray-500">{mark.subject?.code}</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${examTypeColors[mark.examType]}`}>
-                            {mark.examType}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 font-medium text-gray-800">{mark.obtainedMarks}</td>
-                        <td className="px-6 py-4 text-gray-500">{mark.totalMarks}</td>
-                        <td className="px-6 py-4">
-                          <span className={`font-medium ${
-                            (mark.obtainedMarks / mark.totalMarks) >= 0.7 ? 'text-green-600' :
-                            (mark.obtainedMarks / mark.totalMarks) >= 0.4 ? 'text-orange-500' :
-                            'text-red-600'}`}>
-                            {((mark.obtainedMarks / mark.totalMarks) * 100).toFixed(1)}%
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500 text-sm">{mark.remarks || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-                <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
-              </div>
+                {marks.length > 0 && (
+                  <div className="mt-6 rounded-2xl bg-white shadow-sm overflow-hidden">
+                    <div className="border-b p-6">
+                      <h2 className="text-lg font-semibold text-slate-900">Published Mark Ledger</h2>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[860px]">
+                        <thead className="bg-slate-50">
+                          <tr className="text-left text-sm text-slate-500">
+                            <th className="px-6 py-4">Subject</th>
+                            <th className="px-6 py-4">Marks</th>
+                            <th className="px-6 py-4">Percentage</th>
+                            <th className="px-6 py-4">Grade</th>
+                            <th className="px-6 py-4">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {marks.map((mark) => (
+                            <tr key={mark.id} className="border-t">
+                              <td className="px-6 py-4">
+                                <p className="font-medium text-slate-900">{mark.subject?.name}</p>
+                                <p className="text-xs text-slate-500">{mark.subject?.code}</p>
+                              </td>
+                              <td className="px-6 py-4 text-slate-700">{mark.obtainedMarks}/{mark.totalMarks}</td>
+                              <td className="px-6 py-4 text-slate-700">{mark.percentage.toFixed(1)}%</td>
+                              <td className="px-6 py-4 text-slate-700">{mark.grade}</td>
+                              <td className="px-6 py-4 text-sm text-slate-500">{mark.remarks || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -142,5 +218,3 @@ const StudentMarks = () => {
 }
 
 export default StudentMarks
-
-

@@ -25,7 +25,7 @@ const noticeTypeEnum = z.enum(['GENERAL', 'EXAM', 'HOLIDAY', 'EVENT', 'URGENT'])
 const noticeAudienceEnum = z.enum(['ALL', 'STUDENTS', 'INSTRUCTORS_ONLY'])
 const dayOfWeekEnum = z.enum(['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'])
 const attendanceStatusEnum = z.enum(['PRESENT', 'ABSENT', 'LATE'])
-const examTypeEnum = z.enum(['INTERNAL', 'MIDTERM', 'FINAL', 'PRACTICAL'])
+const examTypeEnum = z.enum(['INTERNAL', 'MIDTERM', 'FINAL', 'PREBOARD', 'PRACTICAL'])
 const exportFormatEnum = z.enum(['pdf', 'xlsx'])
 const applicationStatusEnum = z.enum(['PENDING', 'REVIEWED', 'CONVERTED'])
 const absenceTicketStatusEnum = z.enum(['PENDING', 'APPROVED', 'REJECTED'])
@@ -213,6 +213,8 @@ const updateMarksBody = z.object({
 const attendanceManualBody = z.object({
   subjectId: z.string().uuid(),
   attendanceDate: z.string().trim().min(1),
+  semester: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(12).optional()),
+  section: optionalString(20),
   attendanceList: z.array(z.object({
     studentId: z.string().uuid(),
     status: attendanceStatusEnum
@@ -426,7 +428,9 @@ const schemas = {
       params: z.object({ subjectId: z.string().uuid() }),
       query: z.object({
         ...paginationQuery,
-        date: optionalString(50)
+        date: optionalString(50),
+        semester: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(12).optional()),
+        section: optionalString(20)
       })
     }
   },
@@ -445,6 +449,13 @@ const schemas = {
   marks: {
     create: { body: marksBody },
     update: { params: uuidParam, body: updateMarksBody },
+    review: {
+      query: z.object({
+        ...paginationQuery,
+        examType: examTypeEnum.optional(),
+        subjectId: z.preprocess(emptyToUndefined, z.string().uuid().optional())
+      })
+    },
     bySubject: {
       params: z.object({ subjectId: z.string().uuid() }),
       query: z.object({
@@ -488,7 +499,16 @@ const schemas = {
     grade: {
       params: z.object({ submissionId: z.string().uuid() }),
       body: z.object({
-        obtainedMarks: z.coerce.number().int().min(0)
+        obtainedMarks: z.coerce.number().int().min(0),
+        feedback: optionalString(1000)
+      })
+    }
+  },
+  marksPublication: {
+    publish: {
+      body: z.object({
+        subjectId: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
+        examType: examTypeEnum
       })
     }
   },

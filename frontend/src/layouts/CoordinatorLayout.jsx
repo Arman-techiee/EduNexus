@@ -6,7 +6,6 @@ import {
   CalendarDays,
   ClipboardList,
   FileText,
-  FolderOpen,
   LayoutDashboard,
   Percent,
   UserCircle2,
@@ -30,7 +29,6 @@ const CoordinatorLayout = ({ children }) => {
     { path: `${basePath}/attendance`, label: 'Attendance', icon: Percent, meta: 'Department attendance' },
     { path: `${basePath}/assignments`, label: 'Assignments', icon: ClipboardList, meta: 'Task tracking' },
     { path: `${basePath}/marks`, label: 'Results', icon: FileText, meta: 'Assessment data' },
-    { path: `${basePath}/materials`, label: 'Books', icon: FolderOpen, meta: 'Learning materials' },
     { path: `${basePath}/profile`, label: 'Profile', icon: UserCircle2, meta: 'My account' }
   ]), [])
 

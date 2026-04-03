@@ -79,7 +79,7 @@ const StudentAssignments = () => {
       <div className="p-4 md:p-8">
         <PageHeader
           title="Assignments"
-          subtitle="View and submit your assignments"
+          subtitle="View module assignments, submit your work, and read instructor feedback after review."
           breadcrumbs={['Student', 'Assignments']}
         />
 
@@ -125,9 +125,9 @@ const StudentAssignments = () => {
                             View Question PDF
                           </button>
                         )}
-                        {submission?.obtainedMarks !== null && submission?.obtainedMarks !== undefined && (
+                        {submission?.feedback && (
                           <span className="text-green-600 font-medium">
-                            ✅ Scored: {submission.obtainedMarks}/{assignment.totalMarks}
+                            Feedback available
                           </span>
                         )}
                       </div>
@@ -198,6 +198,11 @@ const StudentAssignments = () => {
                       )}
                       {submission.note && (
                         <p className="text-sm text-gray-700 mt-1">Note: {submission.note}</p>
+                      )}
+                      {submission.feedback && (
+                        <div className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">
+                          Instructor feedback: {submission.feedback}
+                        </div>
                       )}
                     </div>
                   )}

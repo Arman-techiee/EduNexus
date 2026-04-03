@@ -1,6 +1,7 @@
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../utils/api'
 
 const initialsFromName = (name = '') =>
   name
@@ -30,8 +31,55 @@ const AppShell = ({
 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [noticesCount, setNoticesCount] = useState(0)
   const roleThemeClass = roleThemeClasses[roleTheme] || roleThemeClasses.admin
   const isDesktopCollapsed = sidebarCollapsed && !mobileOpen
+
+  useEffect(() => {
+    let isMounted = true
+
+    const fetchNoticesCount = async () => {
+      try {
+        const response = await api.get('/notices', {
+          params: {
+            page: 1,
+            limit: 1
+          }
+        })
+
+        if (isMounted) {
+          setNoticesCount(response.data.total ?? 0)
+        }
+      } catch {
+        if (isMounted) {
+          setNoticesCount(0)
+        }
+      }
+    }
+
+    void fetchNoticesCount()
+    const intervalId = window.setInterval(() => {
+      void fetchNoticesCount()
+    }, 30000)
+
+    return () => {
+      isMounted = false
+      window.clearInterval(intervalId)
+    }
+  }, [activePath, user?.id])
+
+  const computedTopItems = useMemo(() => (
+    topItems.map((item) => {
+      if (item.path?.includes('/notices')) {
+        return {
+          ...item,
+          badge: noticesCount > 0 ? noticesCount : null
+        }
+      }
+
+      return item
+    })
+  ), [noticesCount, topItems])
 
   return (
     <div className={`h-screen overflow-hidden bg-slate-100 text-slate-900 ${roleThemeClass}`} data-role-theme={roleTheme}>
@@ -213,7 +261,7 @@ const AppShell = ({
               </div>
 
               <div className="flex gap-3 overflow-x-auto pb-1">
-                {topItems.map((item) => {
+                {computedTopItems.map((item) => {
                   const Icon = item.icon
                   const isActive = item.path && activePath === item.path
 

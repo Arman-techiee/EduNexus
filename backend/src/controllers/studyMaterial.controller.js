@@ -74,9 +74,29 @@ const createMaterial = async (req, res) => {
 const getMaterialsBySubject = async (req, res) => {
   try {
     const { subjectId } = req.params
+    const where = { subjectId }
+
+    if (req.user.role === 'INSTRUCTOR') {
+      where.instructorId = req.instructor?.id || '__no_materials__'
+    }
+
+    if (req.user.role === 'STUDENT') {
+      const student = req.student
+      if (!student) {
+        return res.status(403).json({ message: 'Student profile not found' })
+      }
+
+      where.subject = {
+        enrollments: {
+          some: {
+            studentId: student.id
+          }
+        }
+      }
+    }
 
     const materials = await prisma.studyMaterial.findMany({
-      where: { subjectId },
+      where,
       include: {
         instructor: { include: { user: { select: { name: true } } } },
         subject: { select: { name: true, code: true } }
@@ -95,7 +115,29 @@ const getMaterialsBySubject = async (req, res) => {
 // ================================
 const getAllMaterials = async (req, res) => {
   try {
+    const where = {}
+
+    if (req.user.role === 'INSTRUCTOR') {
+      where.instructorId = req.instructor?.id || '__no_materials__'
+    }
+
+    if (req.user.role === 'STUDENT') {
+      const student = req.student
+      if (!student) {
+        return res.status(403).json({ message: 'Student profile not found' })
+      }
+
+      where.subject = {
+        enrollments: {
+          some: {
+            studentId: student.id
+          }
+        }
+      }
+    }
+
     const materials = await prisma.studyMaterial.findMany({
+      where,
       include: {
         instructor: { include: { user: { select: { name: true } } } },
         subject: { select: { name: true, code: true } }

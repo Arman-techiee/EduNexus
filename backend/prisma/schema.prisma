@@ -272,6 +272,7 @@ model Submission {
   fileUrl      String?
   note         String?
   obtainedMarks Int?
+  feedback     String?
   submittedAt  DateTime @default(now())
   status       SubmissionStatus @default(SUBMITTED)
 
@@ -302,9 +303,13 @@ model Mark {
   totalMarks   Int
   obtainedMarks Int
   remarks      String?
+  isPublished  Boolean  @default(false)
+  publishedAt  DateTime?
+  publishedBy  String?
   createdAt    DateTime @default(now())
 
   @@index([studentId, subjectId])
+  @@index([subjectId, isPublished])
   @@unique([studentId, subjectId, examType])
 }
 
@@ -312,6 +317,7 @@ enum ExamType {
   INTERNAL
   MIDTERM
   FINAL
+  PREBOARD
   PRACTICAL
 }
 

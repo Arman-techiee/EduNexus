@@ -14,7 +14,8 @@ const {
   deleteAssignment,
   submitAssignment,
   getMySubmissions,
-  gradeSubmission
+  gradeSubmission,
+  exportAssignmentGrades
 } = require('../controllers/assignment.controller')
 
 router.use(protect)
@@ -25,6 +26,7 @@ router.post('/', allowRoles('INSTRUCTOR', 'COORDINATOR'), staffUploadLimiter, up
 router.put('/:id', allowRoles('INSTRUCTOR', 'COORDINATOR'), staffUploadLimiter, uploadPdf.single('questionPdf'), validateUploadedPdf, validate(schemas.assignments.update), updateAssignment)
 router.delete('/:id', allowRoles('INSTRUCTOR', 'COORDINATOR', 'ADMIN'), validate(schemas.assignments.id), deleteAssignment)
 router.patch('/submissions/:submissionId/grade', allowRoles('INSTRUCTOR', 'COORDINATOR'), validate(schemas.assignments.grade), gradeSubmission)
+router.get('/:id/export', allowRoles('INSTRUCTOR', 'COORDINATOR', 'ADMIN'), validate(schemas.assignments.id), exportAssignmentGrades)
 
 // Student routes
 router.post('/:id/submit', allowRoles('STUDENT'), studentUploadLimiter, uploadPdf.single('answerPdf'), validateUploadedPdf, validate(schemas.assignments.submit), submitAssignment)

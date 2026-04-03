@@ -6,7 +6,6 @@ import {
   CalendarDays,
   ClipboardList,
   FileText,
-  FolderOpen,
   LayoutDashboard,
   Percent,
   UserCircle2
@@ -27,11 +26,10 @@ const InstructorLayout = ({ children }) => {
 
   const sidebarItems = useMemo(() => ([
     { path: `${basePath}`, label: 'Dashboard', icon: LayoutDashboard, meta: 'Overview' },
-    { path: `${basePath}/subjects`, label: 'Learnings', icon: BookOpenText, meta: 'Assigned subjects' },
-    { path: `${basePath}/assignments`, label: 'Tasks', icon: ClipboardList, meta: 'Class assignments' },
-    { path: `${basePath}/attendance`, label: 'Attendance', icon: Percent, meta: 'Attendance records' },
-    { path: `${basePath}/marks`, label: 'Results', icon: FileText, meta: 'Assessment results' },
-    { path: `${basePath}/materials`, label: 'Books', icon: FolderOpen, meta: 'Learning materials' },
+    { path: `${basePath}/subjects`, label: 'Modules', icon: BookOpenText, meta: 'Assigned modules' },
+    { path: `${basePath}/assignments`, label: 'Assignments', icon: ClipboardList, meta: 'Module assignments' },
+    { path: `${basePath}/attendance`, label: 'Attendance', icon: Percent, meta: 'Subject attendance' },
+    { path: `${basePath}/marks`, label: 'Exam Results', icon: FileText, meta: 'Subject exam marks' },
     { path: `${basePath}/profile`, label: 'Profile', icon: UserCircle2, meta: 'My account' }
   ]), [])
 

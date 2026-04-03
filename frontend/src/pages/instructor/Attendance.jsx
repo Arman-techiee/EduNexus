@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import InstructorLayout from '../../layouts/InstructorLayout'
 import StatusBadge from '../../components/StatusBadge'
 import PageHeader from '../../components/PageHeader'
@@ -24,14 +25,15 @@ const statusClasses = {
 }
 
 const Attendance = () => {
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const isCoordinator = user?.role === 'COORDINATOR'
   const [subjects, setSubjects] = useState([])
-  const [selectedSubject, setSelectedSubject] = useState('')
+  const [selectedSubject, setSelectedSubject] = useState(searchParams.get('subject') || '')
   const [selectedDate, setSelectedDate] = useState(getToday())
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
-  const [selectedSemester, setSelectedSemester] = useState('1')
-  const [selectedSection, setSelectedSection] = useState('')
+  const [selectedSemester, setSelectedSemester] = useState(searchParams.get('semester') || '')
+  const [selectedSection, setSelectedSection] = useState(searchParams.get('section') || '')
   const [qrCode, setQrCode] = useState(null)
   const [qrExpiry, setQrExpiry] = useState('')
   const [loading, setLoading] = useState(false)
@@ -61,7 +63,7 @@ const Attendance = () => {
       return
     }
 
-    if (!selectedSubject) {
+    if (!selectedSubject || !selectedSemester || !selectedSection) {
       setRoster([])
       setAttendance([])
       setMonthlyDays([])
@@ -90,8 +92,20 @@ const Attendance = () => {
       setError('')
 
       const [rosterRes, attendanceRes] = await Promise.all([
-        api.get(`/attendance/subject/${selectedSubject}/roster`, { params: { date: selectedDate } }),
-        api.get(`/attendance/subject/${selectedSubject}`, { params: { date: selectedDate } })
+        api.get(`/attendance/subject/${selectedSubject}/roster`, {
+          params: {
+            date: selectedDate,
+            semester: selectedSemester,
+            section: selectedSection
+          }
+        }),
+        api.get(`/attendance/subject/${selectedSubject}`, {
+          params: {
+            date: selectedDate,
+            semester: selectedSemester,
+            section: selectedSection
+          }
+        })
       ])
 
       setRoster(rosterRes.data.roster)
@@ -173,6 +187,11 @@ const Attendance = () => {
       return
     }
 
+    if (!selectedSemester || !selectedSection) {
+      setError('Please select the semester and section for this attendance session')
+      return
+    }
+
     try {
       setError('')
       const res = await api.post('/attendance/generate-qr', { subjectId: selectedSubject })
@@ -217,6 +236,8 @@ const Attendance = () => {
       await api.post('/attendance/manual', {
         subjectId: selectedSubject,
         attendanceDate: selectedDate,
+        semester: parseInt(selectedSemester, 10),
+        section: selectedSection,
         attendanceList: roster.map((student) => ({
           studentId: student.id,
           status: student.status || DEFAULT_STATUS
@@ -255,7 +276,10 @@ const Attendance = () => {
             responseType: 'blob'
           })
         : await api.get(`/attendance/subject/${selectedSubject}/export`, {
-            params: { date: selectedDate, format },
+            params: {
+              date: selectedDate,
+              format
+            },
             responseType: 'blob'
           })
 
@@ -360,14 +384,14 @@ const Attendance = () => {
           title="Attendance"
           subtitle={isCoordinator
             ? 'Review department attendance by semester and section with monthly averages and a full record list.'
-            : 'Manage daily attendance with a proper subject roster, QR access, and date-wise records.'}
+            : 'Select the module, semester, and section before marking daily attendance or reviewing saved subject records.'}
           breadcrumbs={[isCoordinator ? 'Coordinator' : 'Instructor', 'Attendance']}
           actions={[{
             label: isCoordinator ? 'Load Department Report' : 'Refresh Attendance',
             icon: RefreshCw,
             variant: 'secondary',
             onClick: isCoordinator ? fetchCoordinatorDepartmentReport : fetchAttendanceWorkspace,
-            disabled: isCoordinator ? !selectedSemester : !selectedSubject
+            disabled: isCoordinator ? !selectedSemester : !selectedSubject || !selectedSemester || !selectedSection
           }]}
         />
 
@@ -375,7 +399,7 @@ const Attendance = () => {
         {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
 
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-          <div className={`grid grid-cols-1 gap-4 ${isCoordinator ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+          <div className={`grid grid-cols-1 gap-4 ${isCoordinator ? 'md:grid-cols-4' : 'md:grid-cols-5'}`}>
             {isCoordinator ? (
               <>
                 <div>
@@ -405,11 +429,15 @@ const Attendance = () => {
               </>
             ) : (
               <div>
-                <label className="block text-sm text-gray-600 mb-2">Subject</label>
+                <label className="block text-sm text-gray-600 mb-2">Module</label>
                 <select
                   value={selectedSubject}
                   onChange={(e) => {
                     setSelectedSubject(e.target.value)
+                    const subject = subjects.find((item) => item.id === e.target.value)
+                    if (subject?.semester) {
+                      setSelectedSemester(String(subject.semester))
+                    }
                     setQrCode(null)
                     setError('')
                   }}
@@ -422,6 +450,35 @@ const Attendance = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+            {!isCoordinator && (
+              <div>
+                <label className="block text-sm text-gray-600 mb-2">Semester</label>
+                <select
+                  value={selectedSemester}
+                  onChange={(e) => setSelectedSemester(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="">Select Semester</option>
+                  {Array.from({ length: 8 }, (_, index) => (
+                    <option key={index + 1} value={String(index + 1)}>
+                      Semester {index + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {!isCoordinator && (
+              <div>
+                <label className="block text-sm text-gray-600 mb-2">Section</label>
+                <input
+                  type="text"
+                  value={selectedSection}
+                  onChange={(e) => setSelectedSection(e.target.value.toUpperCase())}
+                  placeholder="A / B / C"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
               </div>
             )}
             {isCoordinator ? (
@@ -449,7 +506,7 @@ const Attendance = () => {
               <button
                 type="button"
                 onClick={isCoordinator ? fetchCoordinatorDepartmentReport : fetchAttendanceWorkspace}
-                disabled={isCoordinator ? !selectedSemester : !selectedSubject}
+                disabled={isCoordinator ? !selectedSemester : !selectedSubject || !selectedSemester || !selectedSection}
                 className="w-full bg-gray-900 text-white py-2.5 rounded-lg hover:bg-black transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isCoordinator ? 'Load Department Report' : 'Refresh Attendance'}
@@ -458,7 +515,7 @@ const Attendance = () => {
           </div>
         </div>
 
-        {(isCoordinator || selectedSubject) && (
+        {(isCoordinator || (selectedSubject && selectedSemester && selectedSection)) && (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-white rounded-2xl shadow-sm p-5">
@@ -505,7 +562,7 @@ const Attendance = () => {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-800">Manual Attendance</h2>
-                    <p className="text-sm text-gray-500 mt-1">Mark the correct status for each student in the selected subject and date.</p>
+                    <p className="text-sm text-gray-500 mt-1">Mark the correct status for each student in the selected module, semester, section, and date.</p>
                   </div>
                   <div className="flex gap-2">
                     {STATUSES.map((status) => (

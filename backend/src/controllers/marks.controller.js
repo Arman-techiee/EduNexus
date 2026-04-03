@@ -1,7 +1,84 @@
 const prisma = require('../utils/prisma')
-const logger = require('../utils/logger')
 const { getPagination } = require('../utils/pagination')
 const { recordAuditLog } = require('../utils/audit')
+
+const EXAM_TYPES = ['INTERNAL', 'MIDTERM', 'FINAL', 'PREBOARD', 'PRACTICAL']
+const STUDENT_VISIBLE_EXAM_TYPES = EXAM_TYPES.filter((type) => type !== 'PRACTICAL')
+
+const getPercentage = (obtainedMarks, totalMarks) => {
+  if (!totalMarks) return 0
+  return Number(((obtainedMarks / totalMarks) * 100).toFixed(2))
+}
+
+const getGradeFromPercentage = (percentage) => {
+  if (percentage >= 90) return 'A+'
+  if (percentage >= 80) return 'A'
+  if (percentage >= 70) return 'B+'
+  if (percentage >= 60) return 'B'
+  if (percentage >= 50) return 'C+'
+  if (percentage >= 40) return 'C'
+  return 'F'
+}
+
+const getGradePointFromPercentage = (percentage) => {
+  if (percentage >= 90) return 4.0
+  if (percentage >= 80) return 3.6
+  if (percentage >= 70) return 3.2
+  if (percentage >= 60) return 2.8
+  if (percentage >= 50) return 2.4
+  if (percentage >= 40) return 2.0
+  return 0.0
+}
+
+const getGradePointFromMark = (mark) => getGradePointFromPercentage(getPercentage(mark.obtainedMarks, mark.totalMarks))
+
+const decorateMark = (mark) => {
+  const percentage = getPercentage(mark.obtainedMarks, mark.totalMarks)
+
+  return {
+    ...mark,
+    percentage,
+    grade: getGradeFromPercentage(percentage),
+    gradePoint: getGradePointFromPercentage(percentage)
+  }
+}
+
+const buildStudentResultSheet = (marks) => {
+  const subjects = marks.map((mark) => {
+    const percentage = getPercentage(mark.obtainedMarks, mark.totalMarks)
+
+    return {
+      id: mark.id,
+      subjectId: mark.subjectId,
+      subjectName: mark.subject.name,
+      subjectCode: mark.subject.code,
+      obtainedMarks: mark.obtainedMarks,
+      totalMarks: mark.totalMarks,
+      percentage: Number(percentage.toFixed(2)),
+      grade: getGradeFromPercentage(percentage),
+      gradePoint: getGradePointFromPercentage(percentage),
+      remarks: mark.remarks || ''
+    }
+  }).sort((left, right) => left.subjectCode.localeCompare(right.subjectCode))
+
+  const totalObtainedMarks = subjects.reduce((sum, subject) => sum + subject.obtainedMarks, 0)
+  const totalMarks = subjects.reduce((sum, subject) => sum + subject.totalMarks, 0)
+  const overallPercentage = totalMarks > 0 ? getPercentage(totalObtainedMarks, totalMarks) : 0
+  const overallGpa = subjects.length > 0
+    ? Number((subjects.reduce((sum, subject) => sum + subject.gradePoint, 0) / subjects.length).toFixed(2))
+    : 0
+
+  return {
+    subjects,
+    totals: {
+      obtainedMarks: totalObtainedMarks,
+      totalMarks
+    },
+    overallPercentage: Number(overallPercentage.toFixed(2)),
+    overallGrade: getGradeFromPercentage(overallPercentage),
+    overallGpa
+  }
+}
 
 const getManagedSubject = async (subjectId, req) => {
   const { user, instructor } = req
@@ -39,9 +116,26 @@ const getManagedSubject = async (subjectId, req) => {
   return { subject }
 }
 
-// ================================
-// ADD MARKS (Instructor)
-// ================================
+const buildStaffReviewFilters = ({ req, subjectId, examType }) => {
+  const where = {}
+
+  if (subjectId) {
+    where.subjectId = subjectId
+  }
+
+  if (examType) {
+    where.examType = examType
+  }
+
+  if (req.user.role === 'COORDINATOR') {
+    where.subject = {
+      department: req.coordinator?.department || '__no_department__'
+    }
+  }
+
+  return where
+}
+
 const addMarks = async (req, res) => {
   try {
     const { studentId, subjectId, examType, totalMarks, obtainedMarks, remarks } = req.body
@@ -80,7 +174,10 @@ const addMarks = async (req, res) => {
           examType,
           totalMarks,
           obtainedMarks,
-          remarks
+          remarks,
+          isPublished: false,
+          publishedAt: null,
+          publishedBy: null
         },
         include: {
           student: { include: { user: { select: { name: true } } } },
@@ -95,7 +192,7 @@ const addMarks = async (req, res) => {
       throw error
     }
 
-    res.status(201).json({ message: 'Marks added successfully!', mark })
+    res.status(201).json({ message: 'Marks added successfully!', mark: decorateMark(mark) })
 
     await recordAuditLog({
       actorId: req.user.id,
@@ -103,21 +200,13 @@ const addMarks = async (req, res) => {
       action: 'MARK_CREATED',
       entityType: 'Mark',
       entityId: mark.id,
-      metadata: {
-        subjectId,
-        studentId,
-        examType
-      }
+      metadata: { subjectId, studentId, examType }
     })
-
   } catch (error) {
     res.internalError(error)
   }
 }
 
-// ================================
-// UPDATE MARKS (Instructor)
-// ================================
 const updateMarks = async (req, res) => {
   try {
     const { id } = req.params
@@ -128,12 +217,26 @@ const updateMarks = async (req, res) => {
       return res.status(404).json({ message: 'Mark not found' })
     }
 
+    const access = await getManagedSubject(mark.subjectId, req)
+    if (access.error) {
+      return res.status(access.error.status).json({ message: access.error.message })
+    }
+
     const updated = await prisma.mark.update({
       where: { id },
-      data: { obtainedMarks, remarks }
+      data: {
+        obtainedMarks,
+        remarks,
+        isPublished: false,
+        publishedAt: null,
+        publishedBy: null
+      }
     })
 
-    res.json({ message: 'Marks updated successfully!', mark: updated })
+    res.json({
+      message: 'Marks updated successfully! The result is now unpublished until the coordinator publishes it again.',
+      mark: decorateMark(updated)
+    })
 
     await recordAuditLog({
       actorId: req.user.id,
@@ -141,19 +244,13 @@ const updateMarks = async (req, res) => {
       action: 'MARK_UPDATED',
       entityType: 'Mark',
       entityId: updated.id,
-      metadata: {
-        obtainedMarks: updated.obtainedMarks
-      }
+      metadata: { obtainedMarks: updated.obtainedMarks }
     })
-
   } catch (error) {
     res.internalError(error)
   }
 }
 
-// ================================
-// GET MARKS BY SUBJECT (Instructor/Admin)
-// ================================
 const getMarksBySubject = async (req, res) => {
   try {
     const { subjectId } = req.params
@@ -175,23 +272,94 @@ const getMarksBySubject = async (req, res) => {
           student: { include: { user: { select: { name: true } } } },
           subject: { select: { name: true, code: true } }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [
+          { examType: 'asc' },
+          { createdAt: 'desc' }
+        ],
         skip,
         take: limit
       }),
       prisma.mark.count({ where: filters })
     ])
 
-    res.json({ total, page, limit, marks, subject: access.subject })
+    const decoratedMarks = marks.map(decorateMark)
+    const overallPercentage = decoratedMarks.length > 0
+      ? getPercentage(
+          decoratedMarks.reduce((sum, mark) => sum + mark.obtainedMarks, 0),
+          decoratedMarks.reduce((sum, mark) => sum + mark.totalMarks, 0)
+        )
+      : 0
 
+    res.json({
+      total,
+      page,
+      limit,
+      marks: decoratedMarks,
+      subject: access.subject,
+      availableExamTypes: [...new Set(decoratedMarks.map((mark) => mark.examType))],
+      stats: {
+        records: total,
+        published: decoratedMarks.filter((mark) => mark.isPublished).length,
+        unpublished: decoratedMarks.filter((mark) => !mark.isPublished).length,
+        overallPercentage: Number(overallPercentage.toFixed(2)),
+        overallGrade: getGradeFromPercentage(overallPercentage)
+      }
+    })
   } catch (error) {
     res.internalError(error)
   }
 }
 
-// ================================
-// GET ENROLLED STUDENTS BY SUBJECT (Instructor/Admin)
-// ================================
+const getMarksReview = async (req, res) => {
+  try {
+    const { examType, subjectId } = req.query
+    const { page, limit, skip } = getPagination(req.query)
+
+    const where = buildStaffReviewFilters({ req, subjectId, examType })
+
+    const [marks, total] = await Promise.all([
+      prisma.mark.findMany({
+        where,
+        include: {
+          student: { include: { user: { select: { name: true, email: true } } } },
+          subject: { select: { id: true, name: true, code: true, semester: true, department: true } }
+        },
+        orderBy: [
+          { examType: 'asc' },
+          { subject: { code: 'asc' } },
+          { student: { rollNumber: 'asc' } }
+        ],
+        skip,
+        take: limit
+      }),
+      prisma.mark.count({ where })
+    ])
+
+    const decoratedMarks = marks.map(decorateMark)
+    const byExamType = EXAM_TYPES.map((type) => ({
+      examType: type,
+      count: decoratedMarks.filter((mark) => mark.examType === type).length,
+      published: decoratedMarks.filter((mark) => mark.examType === type && mark.isPublished).length
+    })).filter((item) => item.count > 0)
+
+    res.json({
+      total,
+      page,
+      limit,
+      marks: decoratedMarks,
+      availableExamTypes: [...new Set(decoratedMarks.map((mark) => mark.examType))],
+      stats: {
+        total,
+        published: decoratedMarks.filter((mark) => mark.isPublished).length,
+        unpublished: decoratedMarks.filter((mark) => !mark.isPublished).length,
+        byExamType
+      }
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
 const getEnrolledStudentsBySubject = async (req, res) => {
   try {
     const { subjectId } = req.params
@@ -236,68 +404,96 @@ const getEnrolledStudentsBySubject = async (req, res) => {
       }))
 
     res.json({ total: students.length, students, subject: access.subject })
-
   } catch (error) {
     res.internalError(error)
   }
 }
 
-// ================================
-// GET MY MARKS (Student)
-// ================================
 const getMyMarks = async (req, res) => {
   try {
     const { page, limit, skip } = getPagination(req.query)
+    const { examType } = req.query
     const student = req.student
 
     if (!student) {
       return res.status(403).json({ message: 'Student profile not found' })
     }
 
+    const availableExamTypesRaw = await prisma.mark.findMany({
+      where: {
+        studentId: student.id,
+        isPublished: true,
+        examType: { in: STUDENT_VISIBLE_EXAM_TYPES }
+      },
+      distinct: ['examType'],
+      select: { examType: true },
+      orderBy: { examType: 'asc' }
+    })
+
+    const availableExamTypes = availableExamTypesRaw.map((item) => item.examType)
+    const selectedExamType = examType && STUDENT_VISIBLE_EXAM_TYPES.includes(examType)
+      ? examType
+      : availableExamTypes[0] || null
+
+    if (!selectedExamType) {
+      return res.json({
+        total: 0,
+        page,
+        limit,
+        examType: null,
+        availableExamTypes: [],
+        resultSheet: {
+          subjects: [],
+          totals: { obtainedMarks: 0, totalMarks: 0 },
+          overallPercentage: 0,
+          overallGrade: '-',
+          overallGpa: 0
+        }
+      })
+    }
+
+    const publishedFilter = {
+      studentId: student.id,
+      isPublished: true,
+      examType: selectedExamType
+    }
+
     const [marks, total, allMarks] = await Promise.all([
       prisma.mark.findMany({
-        where: { studentId: student.id },
+        where: publishedFilter,
         include: {
-          subject: { select: { name: true, code: true } }
+          subject: { select: { name: true, code: true, semester: true } }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { subject: { code: 'asc' } },
         skip,
         take: limit
       }),
-      prisma.mark.count({ where: { studentId: student.id } }),
+      prisma.mark.count({ where: publishedFilter }),
       prisma.mark.findMany({
-        where: { studentId: student.id },
+        where: publishedFilter,
         include: {
-          subject: { select: { name: true, code: true } }
-        }
+          subject: { select: { name: true, code: true, semester: true } }
+        },
+        orderBy: { subject: { code: 'asc' } }
       })
     ])
 
-    // Summary per subject
-    const summary = {}
-    allMarks.forEach(m => {
-      const key = m.subject.name
-      if (!summary[key]) {
-        summary[key] = { subject: m.subject.name, code: m.subject.code, exams: [] }
-      }
-      summary[key].exams.push({
-        examType: m.examType,
-        obtained: m.obtainedMarks,
-        total: m.totalMarks,
-        percentage: ((m.obtainedMarks / m.totalMarks) * 100).toFixed(1) + '%'
-      })
+    const resultSheet = buildStudentResultSheet(allMarks)
+
+    res.json({
+      total,
+      page,
+      limit,
+      examType: selectedExamType,
+      availableExamTypes,
+      marks: marks.map(decorateMark),
+      resultSheet
     })
-
-    res.json({ total, page, limit, marks, summary: Object.values(summary) })
-
   } catch (error) {
     res.internalError(error)
   }
 }
 
-// ================================
-// DELETE MARKS (Admin only)
-// ================================
 const deleteMarks = async (req, res) => {
   try {
     const { id } = req.params
@@ -323,7 +519,67 @@ const deleteMarks = async (req, res) => {
         examType: mark.examType
       }
     })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
 
+const publishMarks = async (req, res) => {
+  try {
+    const { subjectId, examType } = req.body
+
+    if (req.user.role !== 'COORDINATOR') {
+      return res.status(403).json({ message: 'Only coordinators can publish exam results' })
+    }
+
+    if (examType === 'PRACTICAL') {
+      return res.status(400).json({ message: 'Practical marks remain internal and cannot be published for students.' })
+    }
+
+    if (!req.coordinator?.department) {
+      return res.status(403).json({ message: 'Coordinator department is not configured yet' })
+    }
+
+    const where = {
+      examType,
+      subject: {
+        department: req.coordinator.department
+      },
+      ...(subjectId ? { subjectId } : {})
+    }
+
+    const existingCount = await prisma.mark.count({ where })
+    if (existingCount === 0) {
+      return res.status(404).json({ message: 'No exam marks were found for the selected publication scope' })
+    }
+
+    const result = await prisma.mark.updateMany({
+      where,
+      data: {
+        isPublished: true,
+        publishedAt: new Date(),
+        publishedBy: req.user.id
+      }
+    })
+
+    const scopeLabel = subjectId ? 'module' : 'department'
+    res.json({
+      message: `${examType} results published successfully for the selected ${scopeLabel}.`,
+      count: result.count
+    })
+
+    await recordAuditLog({
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      action: 'MARKS_PUBLISHED',
+      entityType: 'Mark',
+      metadata: {
+        subjectId: subjectId || 'ALL_DEPARTMENT_SUBJECTS',
+        examType,
+        count: result.count,
+        department: req.coordinator.department
+      }
+    })
   } catch (error) {
     res.internalError(error)
   }
@@ -333,9 +589,9 @@ module.exports = {
   addMarks,
   updateMarks,
   getMarksBySubject,
+  getMarksReview,
   getEnrolledStudentsBySubject,
   getMyMarks,
-  deleteMarks
+  deleteMarks,
+  publishMarks
 }
-
-

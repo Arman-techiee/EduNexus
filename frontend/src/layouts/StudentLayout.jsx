@@ -15,7 +15,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import AppShell from '../components/AppShell'
 
-const StudentLayout = ({ children, noticesCount = 4 }) => {
+const StudentLayout = ({ children, noticesCount = 0 }) => {
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()

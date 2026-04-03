@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import Alert from '../../components/Alert'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import PageHeader from '../../components/PageHeader'
@@ -12,11 +13,12 @@ import useApi from '../../hooks/useApi'
 import api, { resolveFileUrl } from '../../utils/api'
 
 const InstructorMaterials = () => {
+  const [searchParams] = useSearchParams()
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ title: '', description: '', fileUrl: '', subjectId: '' })
   const [materialPdf, setMaterialPdf] = useState(null)
   const { showToast } = useToast()
-  const [filterSubject, setFilterSubject] = useState('')
+  const [filterSubject, setFilterSubject] = useState(searchParams.get('subject') || '')
   const [materialToDelete, setMaterialToDelete] = useState(null)
   const [deletingMaterial, setDeletingMaterial] = useState(false)
   const [previewFile, setPreviewFile] = useState(null)
@@ -99,7 +101,7 @@ const InstructorMaterials = () => {
   }
 
   const filtered = filterSubject
-    ? materials.filter(m => m.subject?.code === filterSubject)
+    ? materials.filter(m => m.subjectId === filterSubject)
     : materials
 
   const getFileIcon = (url) => {
@@ -145,10 +147,22 @@ const InstructorMaterials = () => {
       <div className="p-4 md:p-8">
 
         <PageHeader
-          title="Study Materials"
-          subtitle="Upload and manage learning resources"
-          breadcrumbs={['Instructor', 'Materials']}
-          actions={[{ label: 'Upload Material', icon: Plus, variant: 'primary', onClick: () => { setShowModal(true); setError('') } }]}
+          title="Module Materials"
+          subtitle="Open a module, add study materials, and keep each subject resource organized in one place."
+          breadcrumbs={['Instructor', 'Modules', 'Materials']}
+          actions={[{
+            label: 'Add Study Material',
+            icon: Plus,
+            variant: 'primary',
+            onClick: () => {
+              setShowModal(true)
+              setError('')
+              setForm((current) => ({
+                ...current,
+                subjectId: filterSubject || current.subjectId
+              }))
+            }
+          }]}
         />
 
         <Alert type="error" message={error} />
@@ -160,14 +174,14 @@ const InstructorMaterials = () => {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition
               ${!filterSubject ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
           >
-            All
+            All Modules
           </button>
           {subjects.map(s => (
             <button
               key={s.id}
-              onClick={() => setFilterSubject(s.code)}
+              onClick={() => setFilterSubject(s.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition
-                ${filterSubject === s.code ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
+                ${filterSubject === s.id ? 'bg-green-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
             >
               {s.code}
             </button>
@@ -262,7 +276,7 @@ const InstructorMaterials = () => {
 
       {/* Upload Modal */}
       {showModal && (
-        <Modal title="Upload Material" onClose={() => setShowModal(false)}>
+        <Modal title="Add Study Material To Module" onClose={() => setShowModal(false)}>
             <Alert type="error" message={error} />
             <form onSubmit={handleSubmit} className="space-y-4">
               <input
@@ -297,7 +311,7 @@ const InstructorMaterials = () => {
                 required value={form.subjectId} onChange={(e) => setForm({ ...form, subjectId: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               >
-                <option value="">Select Subject</option>
+                <option value="">Select Module</option>
                 {subjects.map(s => (
                   <option key={s.id} value={s.id}>{s.name} — {s.code}</option>
                 ))}

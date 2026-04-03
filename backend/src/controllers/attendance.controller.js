@@ -83,10 +83,15 @@ const getOwnedSubject = async (subjectId, req) => {
   return { subject }
 }
 
-const getSubjectStudents = async (subject) => {
+const getSubjectStudents = async (subject, filters = {}) => {
+  const normalizedSemester = filters.semester ? parseInt(filters.semester, 10) : null
+  const normalizedSection = filters.section ? String(filters.section).trim() : ''
+
   const students = await prisma.student.findMany({
     where: {
       user: { isActive: true },
+      ...(normalizedSemester ? { semester: normalizedSemester } : {}),
+      ...(normalizedSection ? { section: normalizedSection } : {}),
       subjectEnrollments: {
         some: {
           subjectId: subject.id
@@ -1148,7 +1153,7 @@ const markAttendanceQR = async (req, res) => {
 // ================================
 const markAttendanceManual = async (req, res) => {
   try {
-    const { subjectId, attendanceDate, attendanceList } = req.body
+    const { subjectId, attendanceDate, attendanceList, semester, section } = req.body
 
     const access = await getOwnedSubject(subjectId, req)
     if (access.error) {
@@ -1169,8 +1174,12 @@ const markAttendanceManual = async (req, res) => {
       return res.status(400).json({ message: 'Please provide a valid attendance date' })
     }
 
-    const subjectStudents = await getSubjectStudents(access.subject)
+    const subjectStudents = await getSubjectStudents(access.subject, { semester, section })
     const allowedStudentIds = new Set(subjectStudents.map((student) => student.id))
+
+    if (subjectStudents.length === 0) {
+      return res.status(400).json({ message: 'No students are available for the selected module, semester, and section' })
+    }
 
     const invalidEntry = attendanceList.find(({ studentId, status }) => (
       !studentId || !allowedStudentIds.has(studentId) || !ATTENDANCE_STATUSES.includes(status)
@@ -1238,7 +1247,7 @@ const markAttendanceManual = async (req, res) => {
 const getAttendanceBySubject = async (req, res) => {
   try {
     const { subjectId } = req.params
-    const { date } = req.query
+    const { date, semester, section } = req.query
     const { page, limit, skip } = getPagination(req.query)
 
     await syncClosedRoutineAbsences(date ? new Date(date) : new Date())
@@ -1248,7 +1257,17 @@ const getAttendanceBySubject = async (req, res) => {
       return res.status(access.error.status).json({ message: access.error.message })
     }
 
-    const filters = { subjectId }
+    const filters = {
+      subjectId,
+      ...(semester || section
+        ? {
+            student: {
+              ...(semester ? { semester: parseInt(semester, 10) } : {}),
+              ...(section ? { section } : {})
+            }
+          }
+        : {})
+    }
     const dayRange = date ? getDayRange(date) : null
 
     if (date && !dayRange) {
@@ -1367,7 +1386,7 @@ const getMyAttendance = async (req, res) => {
 const getSubjectRoster = async (req, res) => {
   try {
     const { subjectId } = req.params
-    const { date } = req.query
+    const { date, semester, section } = req.query
 
     await syncClosedRoutineAbsences(date ? new Date(date) : new Date())
 
@@ -1382,10 +1401,18 @@ const getSubjectRoster = async (req, res) => {
     }
 
     const [students, attendance] = await Promise.all([
-      getSubjectStudents(access.subject),
+      getSubjectStudents(access.subject, { semester, section }),
       prisma.attendance.findMany({
         where: {
           subjectId,
+          ...(semester || section
+            ? {
+                student: {
+                  ...(semester ? { semester: parseInt(semester, 10) } : {}),
+                  ...(section ? { section } : {})
+                }
+              }
+            : {}),
           date: { gte: dayRange.start, lt: dayRange.end }
         }
       })
@@ -1407,6 +1434,8 @@ const getSubjectRoster = async (req, res) => {
     res.json({
       subject: access.subject,
       date: dayRange.start,
+      semester: semester ? parseInt(semester, 10) : null,
+      section: section || '',
       total: roster.length,
       roster,
       summary: buildAttendanceSummary(attendance)
