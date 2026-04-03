@@ -10,7 +10,7 @@ const { recordAuditLog } = require('../utils/audit')
 const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE']
 const QR_VALIDITY_MINUTES = 15
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
-const QR_SIGNING_SECRET = process.env.QR_SIGNING_SECRET || process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'edunexus-qr-secret'
+const QR_SIGNING_SECRET = process.env.QR_SIGNING_SECRET
 
 const getDayRange = (dateValue) => {
   const baseDate = dateValue ? new Date(dateValue) : new Date()

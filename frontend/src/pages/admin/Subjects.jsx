@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react'
 import { LoaderCircle, Pencil, Plus, Trash2, Users } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import api from '../../utils/api'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import LoadingSkeleton from '../../components/LoadingSkeleton'
 import Modal from '../../components/Modal'
 import PageHeader from '../../components/PageHeader'
+import { useAuth } from '../../context/AuthContext'
 import { useReferenceData } from '../../context/ReferenceDataContext'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import { getFriendlyErrorMessage } from '../../utils/errors'
 import logger from '../../utils/logger'
 const Subjects = () => {
+  const { user } = useAuth()
+  const isCoordinator = user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : AdminLayout
   const { subjects, departments, loadSubjects, loadDepartments } = useReferenceData()
   const [instructors, setInstructors] = useState([])
   const [loading, setLoading] = useState(true)
@@ -186,13 +191,13 @@ const Subjects = () => {
   })
 
   return (
-    <AdminLayout>
+    <Layout>
       <div className="p-8">
 
         <PageHeader
           title="Subjects"
-          subtitle="Manage all subjects in EduNexus"
-          breadcrumbs={['Admin', 'Subjects']}
+          subtitle={isCoordinator ? 'Manage department subjects, instructor assignments, and student enrollments.' : 'Manage all subjects in EduNexus'}
+          breadcrumbs={[isCoordinator ? 'Coordinator' : 'Admin', 'Subjects']}
           actions={[{ label: 'Add Subject', icon: Plus, variant: 'primary', onClick: openCreateModal }]}
         />
 
@@ -541,7 +546,7 @@ const Subjects = () => {
         onConfirm={handleDelete}
       />
 
-    </AdminLayout>
+    </Layout>
   )
 }
 

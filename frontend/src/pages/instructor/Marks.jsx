@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Plus, UploadCloud } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import InstructorLayout from '../../layouts/InstructorLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import api from '../../utils/api'
 import Alert from '../../components/Alert'
 import EmptyState from '../../components/EmptyState'
@@ -29,6 +30,7 @@ const Marks = () => {
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const isCoordinator = user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : InstructorLayout
   const { subjects, loadSubjects } = useReferenceData()
   const [marks, setMarks] = useState([])
   const [students, setStudents] = useState([])
@@ -207,7 +209,7 @@ const Marks = () => {
   }
 
   return (
-    <InstructorLayout>
+    <Layout>
       <div className="p-4 md:p-8">
         <PageHeader
           title={isCoordinator ? 'Exam Result Publishing' : 'Exam Marks'}
@@ -520,7 +522,7 @@ const Marks = () => {
           </form>
         </Modal>
       )}
-    </InstructorLayout>
+    </Layout>
   )
 }
 

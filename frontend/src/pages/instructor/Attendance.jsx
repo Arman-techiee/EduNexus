@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import InstructorLayout from '../../layouts/InstructorLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import StatusBadge from '../../components/StatusBadge'
 import PageHeader from '../../components/PageHeader'
 import QrScanPanel from '../../components/QrScanPanel'
@@ -28,6 +29,7 @@ const Attendance = () => {
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const isCoordinator = user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : InstructorLayout
   const [subjects, setSubjects] = useState([])
   const [selectedSubject, setSelectedSubject] = useState(searchParams.get('subject') || '')
   const [selectedDate, setSelectedDate] = useState(getToday())
@@ -378,7 +380,7 @@ const Attendance = () => {
   })
 
   return (
-    <InstructorLayout>
+    <Layout>
       <div className="p-8">
         <PageHeader
           title="Attendance"
@@ -839,7 +841,7 @@ const Attendance = () => {
           </>
         )}
       </div>
-    </InstructorLayout>
+    </Layout>
   )
 }
 

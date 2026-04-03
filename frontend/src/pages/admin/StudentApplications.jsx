@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import Alert from '../../components/Alert'
 import EmptyState from '../../components/EmptyState'
 import LoadingSkeleton from '../../components/LoadingSkeleton'
 import Modal from '../../components/Modal'
 import PageHeader from '../../components/PageHeader'
 import Pagination from '../../components/Pagination'
+import { useAuth } from '../../context/AuthContext'
 import { useReferenceData } from '../../context/ReferenceDataContext'
 import api from '../../utils/api'
 import { getFriendlyErrorMessage } from '../../utils/errors'
 
 const StudentApplications = () => {
+  const { user } = useAuth()
+  const isCoordinator = user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : AdminLayout
   const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -132,7 +137,7 @@ const StudentApplications = () => {
   }
 
   return (
-    <AdminLayout>
+    <Layout>
       <div className="p-8">
         <PageHeader
           title="Student Intake Forms"
@@ -313,7 +318,7 @@ const StudentApplications = () => {
           </div>
         </Modal>
       ) : null}
-    </AdminLayout>
+    </Layout>
   )
 }
 

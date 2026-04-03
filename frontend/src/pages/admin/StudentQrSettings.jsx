@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Pencil, Plus, QrCode, Trash2 } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import PageHeader from '../../components/PageHeader'
 import Modal from '../../components/Modal'
 import EmptyState from '../../components/EmptyState'
 import Alert from '../../components/Alert'
 import { useToast } from '../../components/Toast'
+import { useAuth } from '../../context/AuthContext'
 import api from '../../utils/api'
 import logger from '../../utils/logger'
 
@@ -33,6 +35,9 @@ const defaultHolidayForm = {
 const formatDay = (value) => value.charAt(0) + value.slice(1).toLowerCase()
 
 const StudentQrSettings = () => {
+  const { user } = useAuth()
+  const isCoordinator = user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : AdminLayout
   const [windows, setWindows] = useState([])
   const [holidays, setHolidays] = useState([])
   const [loading, setLoading] = useState(true)
@@ -198,7 +203,7 @@ const StudentQrSettings = () => {
   }
 
   return (
-    <AdminLayout>
+    <Layout>
       <div className="p-4 md:p-8">
         <PageHeader
           title="Student QR Settings"
@@ -429,7 +434,7 @@ const StudentQrSettings = () => {
           </form>
         </Modal>
       ) : null}
-    </AdminLayout>
+    </Layout>
   )
 }
 

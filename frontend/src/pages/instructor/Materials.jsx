@@ -5,14 +5,19 @@ import Alert from '../../components/Alert'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import PageHeader from '../../components/PageHeader'
 import InstructorLayout from '../../layouts/InstructorLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import Modal from '../../components/Modal'
 import EmptyState from '../../components/EmptyState'
 import { useToast } from '../../components/Toast'
+import { useAuth } from '../../context/AuthContext'
 import useApi from '../../hooks/useApi'
 import api, { resolveFileUrl } from '../../utils/api'
 
 const InstructorMaterials = () => {
+  const { user } = useAuth()
+  const isCoordinator = user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : InstructorLayout
   const [searchParams] = useSearchParams()
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ title: '', description: '', fileUrl: '', subjectId: '' })
@@ -143,13 +148,13 @@ const InstructorMaterials = () => {
   }
 
   return (
-    <InstructorLayout>
+    <Layout>
       <div className="p-4 md:p-8">
 
         <PageHeader
-          title="Module Materials"
-          subtitle="Open a module, add study materials, and keep each subject resource organized in one place."
-          breadcrumbs={['Instructor', 'Modules', 'Materials']}
+          title={isCoordinator ? 'Department Materials' : 'Module Materials'}
+          subtitle={isCoordinator ? 'Add and manage study materials across your department modules.' : 'Open a module, add study materials, and keep each subject resource organized in one place.'}
+          breadcrumbs={[isCoordinator ? 'Coordinator' : 'Instructor', 'Modules', 'Materials']}
           actions={[{
             label: 'Add Study Material',
             icon: Plus,
@@ -372,7 +377,7 @@ const InstructorMaterials = () => {
         onClose={() => setMaterialToDelete(null)}
         onConfirm={handleDelete}
       />
-    </InstructorLayout>
+    </Layout>
   )
 }
 

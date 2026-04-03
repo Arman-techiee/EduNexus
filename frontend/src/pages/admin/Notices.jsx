@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Plus } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import api from '../../utils/api'
 import Alert from '../../components/Alert'
 import ConfirmDialog from '../../components/ConfirmDialog'
@@ -76,6 +77,7 @@ const Notices = () => {
   const { showToast } = useToast()
   const isCoordinator = user?.role === 'COORDINATOR'
   const canPostInstructorOnly = user?.role === 'ADMIN' || user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : AdminLayout
 
   const validateNotice = (values) => {
     const validationErrors = {}
@@ -188,7 +190,7 @@ const Notices = () => {
   }
 
   return (
-    <AdminLayout>
+    <Layout>
       <div className="p-4 md:p-8">
 
         <PageHeader
@@ -407,7 +409,7 @@ const Notices = () => {
         onConfirm={handleDelete}
       />
 
-    </AdminLayout>
+    </Layout>
   )
 }
 

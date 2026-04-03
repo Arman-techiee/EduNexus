@@ -23,7 +23,7 @@ const buildAuthUser = (user) => ({
 })
 
 const isPasswordResetEnabled = () => process.env.ENABLE_PASSWORD_RESET === 'true'
-const QR_SIGNING_SECRET = process.env.QR_SIGNING_SECRET || process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET || 'edunexus-qr-secret'
+const QR_SIGNING_SECRET = process.env.QR_SIGNING_SECRET
 
 const createSignedQrPayload = (payload) => JSON.stringify({
   payload,
@@ -270,12 +270,12 @@ const login = async (req, res) => {
     })
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' })
+      return res.status(401).json({ message: 'Invalid credentials' })
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Invalid password' })
+      return res.status(401).json({ message: 'Invalid credentials' })
     }
 
     if (!user.isActive) {

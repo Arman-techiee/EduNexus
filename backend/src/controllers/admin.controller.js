@@ -8,6 +8,32 @@ const { recordAuditLog } = require('../utils/audit')
 
 const DEFAULT_STUDENT_PASSWORD = process.env.DEFAULT_STUDENT_PASSWORD || 'password'
 
+const getAdminStats = async (req, res) => {
+  try {
+    const [totalUsers, totalStudents, totalInstructors, totalCoordinators, totalGatekeepers, totalSubjects] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { role: 'STUDENT' } }),
+      prisma.user.count({ where: { role: 'INSTRUCTOR' } }),
+      prisma.user.count({ where: { role: 'COORDINATOR' } }),
+      prisma.user.count({ where: { role: 'GATEKEEPER' } }),
+      prisma.subject.count()
+    ])
+
+    res.json({
+      stats: {
+        totalUsers,
+        totalStudents,
+        totalInstructors,
+        totalCoordinators,
+        totalGatekeepers,
+        totalSubjects
+      }
+    })
+  } catch (error) {
+    res.internalError(error)
+  }
+}
+
 // ================================
 // GET ALL USERS
 // ================================
@@ -718,6 +744,7 @@ const deleteStudentApplication = async (req, res) => {
 }
 
 module.exports = {
+  getAdminStats,
   getAllUsers,
   getUserById,
   getStudentApplications,

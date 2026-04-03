@@ -39,21 +39,22 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const usersRes = await api.get('/admin/users')
-      const subjectsRes = await api.get('/subjects')
+      const [statsRes, usersRes] = await Promise.all([
+        api.get('/admin/stats'),
+        api.get('/admin/users', { params: { page: 1, limit: 5 } })
+      ])
 
-      const users = usersRes.data.users
-      const students = users.filter(u => u.role === 'STUDENT')
-      const instructors = users.filter(u => u.role === 'INSTRUCTOR')
+      const users = usersRes.data.users || []
+      const nextStats = statsRes.data.stats || {}
 
       setStats({
-        totalUsers: users.length,
-        totalStudents: students.length,
-        totalInstructors: instructors.length,
-        totalSubjects: subjectsRes.data.total,
+        totalUsers: nextStats.totalUsers || 0,
+        totalStudents: nextStats.totalStudents || 0,
+        totalInstructors: nextStats.totalInstructors || 0,
+        totalSubjects: nextStats.totalSubjects || 0,
       })
 
-      setRecentUsers(users.slice(0, 5))
+      setRecentUsers(users)
 
     } catch (error) {
       logger.error(error)

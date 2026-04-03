@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import api from '../../utils/api'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
 import PageHeader from '../../components/PageHeader'
+import { useAuth } from '../../context/AuthContext'
 import logger from '../../utils/logger'
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
 const DAY_SHORT = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun' }
@@ -32,6 +34,9 @@ const defaultForm = {
 }
 
 const AdminRoutine = () => {
+  const { user } = useAuth()
+  const isCoordinator = user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : AdminLayout
   const [routines, setRoutines] = useState([])
   const [subjects, setSubjects] = useState([])
   const [instructors, setInstructors] = useState([])
@@ -176,13 +181,13 @@ const AdminRoutine = () => {
   }
 
   return (
-    <AdminLayout>
+    <Layout>
       <div className="p-8">
 
         <PageHeader
           title="Class Routine"
           subtitle="Manage weekly timetable"
-          breadcrumbs={['Admin', 'Routine']}
+          breadcrumbs={[isCoordinator ? 'Coordinator' : 'Admin', 'Routine']}
           actions={[{
             label: 'Add Class',
             icon: Plus,
@@ -399,7 +404,7 @@ const AdminRoutine = () => {
         onClose={() => setRoutineToDelete(null)}
         onConfirm={handleDelete}
       />
-    </AdminLayout>
+    </Layout>
   )
 }
 

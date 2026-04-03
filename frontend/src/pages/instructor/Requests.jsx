@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Clock3, MessageSquareText, XCircle } from 'lucide-react'
 import InstructorLayout from '../../layouts/InstructorLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import PageHeader from '../../components/PageHeader'
 import EmptyState from '../../components/EmptyState'
 import LoadingSkeleton from '../../components/LoadingSkeleton'
@@ -20,6 +21,8 @@ const statusOptions = ['PENDING', 'APPROVED', 'REJECTED']
 
 const InstructorRequests = () => {
   const { user } = useAuth()
+  const isCoordinator = user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : InstructorLayout
   const { showToast } = useToast()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
@@ -89,7 +92,7 @@ const InstructorRequests = () => {
   }
 
   return (
-    <InstructorLayout>
+    <Layout>
       <div className="p-4 md:p-8">
         <PageHeader
           title="Requests"
@@ -260,7 +263,7 @@ const InstructorRequests = () => {
           </div>
         )}
       </div>
-    </InstructorLayout>
+    </Layout>
   )
 }
 

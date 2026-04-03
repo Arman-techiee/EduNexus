@@ -10,6 +10,7 @@ import HomePage from './pages/shared/HomePage'
 
 // Admin pages
 import AdminDashboard from './pages/admin/Dashboard'
+import CoordinatorDashboard from './pages/coordinator/Dashboard'
 import Users from './pages/admin/Users'
 import StudentApplications from './pages/admin/StudentApplications'
 import Departments from './pages/admin/Departments'
@@ -106,7 +107,7 @@ const AppRoutes = () => {
       <Route path="/admin/student-qr" element={<ProtectedRoute allowedRoles={['ADMIN', 'COORDINATOR']}><StudentQrSettings /></ProtectedRoute>} />
 
       {/* Coordinator Routes */}
-      <Route path="/coordinator" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/coordinator" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><CoordinatorDashboard /></ProtectedRoute>} />
       <Route path="/coordinator/users" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Users /></ProtectedRoute>} />
       <Route path="/coordinator/applications" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><StudentApplications /></ProtectedRoute>} />
       <Route path="/coordinator/subjects" element={<ProtectedRoute allowedRoles={['COORDINATOR']}><Subjects /></ProtectedRoute>} />

@@ -2,6 +2,7 @@ const required = [
   'DATABASE_URL',
   'JWT_SECRET',
   'JWT_REFRESH_SECRET',
+  'QR_SIGNING_SECRET',
   'FRONTEND_URL',
   'NODE_ENV'
 ]

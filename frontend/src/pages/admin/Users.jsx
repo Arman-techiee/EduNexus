@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Power, Trash2, UserPlus } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import api from '../../utils/api'
 import Alert from '../../components/Alert'
 import ConfirmDialog from '../../components/ConfirmDialog'
@@ -32,6 +33,7 @@ const Users = () => {
   const { user: currentUser } = useAuth()
   const { departments, loadDepartments } = useReferenceData()
   const isCoordinator = currentUser?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : AdminLayout
   const [users, setUsers] = useState([])
   const [page, setPage] = useState(1)
   const [limit] = useState(20)
@@ -211,7 +213,7 @@ const Users = () => {
   }
 
   return (
-    <AdminLayout>
+    <Layout>
       <div className="p-4 md:p-8">
 
         <PageHeader
@@ -527,7 +529,7 @@ const Users = () => {
         onClose={() => setUserToDelete(null)}
         onConfirm={handleDelete}
       />
-    </AdminLayout>
+    </Layout>
   )
 }
 

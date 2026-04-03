@@ -4,14 +4,19 @@ import { useSearchParams } from 'react-router-dom'
 import Alert from '../../components/Alert'
 import PageHeader from '../../components/PageHeader'
 import InstructorLayout from '../../layouts/InstructorLayout'
+import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import Modal from '../../components/Modal'
 import EmptyState from '../../components/EmptyState'
 import { useToast } from '../../components/Toast'
+import { useAuth } from '../../context/AuthContext'
 import useApi from '../../hooks/useApi'
 import api, { resolveFileUrl } from '../../utils/api'
 
 const Assignments = () => {
+  const { user } = useAuth()
+  const isCoordinator = user?.role === 'COORDINATOR'
+  const Layout = isCoordinator ? CoordinatorLayout : InstructorLayout
   const [searchParams] = useSearchParams()
   const [showModal, setShowModal] = useState(false)
   const [showSubmissions, setShowSubmissions] = useState(null)
@@ -160,12 +165,12 @@ const Assignments = () => {
   const isOverdue = (dueDate) => new Date() > new Date(dueDate)
 
   return (
-    <InstructorLayout>
+    <Layout>
       <div className="p-4 md:p-8">
         <PageHeader
-          title="Module Assignments"
-          subtitle="Upload assignments for a module, review submissions, export marks, and send student feedback."
-          breadcrumbs={['Instructor', 'Modules', 'Assignments']}
+          title={isCoordinator ? 'Department Assignments' : 'Module Assignments'}
+          subtitle={isCoordinator ? 'Create assignments, review submissions, export marks, and send feedback across your department modules.' : 'Upload assignments for a module, review submissions, export marks, and send student feedback.'}
+          breadcrumbs={[isCoordinator ? 'Coordinator' : 'Instructor', 'Modules', 'Assignments']}
           actions={[{
             label: 'Add Assignment',
             icon: Plus,
@@ -262,7 +267,7 @@ const Assignments = () => {
               <EmptyState
                 icon="📝"
                 title="No assignments yet"
-                description="Create the first assignment for one of your modules to start collecting work."
+                description={isCoordinator ? 'Create the first department assignment to start collecting work.' : 'Create the first assignment for one of your modules to start collecting work.'}
               />
             )}
           </div>
@@ -474,7 +479,7 @@ const Assignments = () => {
           </div>
         </div>
       )}
-    </InstructorLayout>
+    </Layout>
   )
 }
 

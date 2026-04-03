@@ -4,6 +4,7 @@ const { protect, allowRoles } = require('../middleware/auth.middleware')
 const { validate } = require('../middleware/validate.middleware')
 const { schemas } = require('../validators/schemas')
 const {
+  getAdminStats,
   getAllUsers,
   getUserById,
   getStudentApplications,
@@ -21,6 +22,7 @@ const {
 
 router.use(protect)
 
+router.get('/stats', allowRoles('ADMIN'), getAdminStats)
 router.get('/users', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.getAllUsers), getAllUsers)
 router.get('/users/:id', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.userId), getUserById)
 router.get('/student-applications', allowRoles('ADMIN', 'COORDINATOR'), validate(schemas.admin.getStudentApplications), getStudentApplications)
