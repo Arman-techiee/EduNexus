@@ -45,7 +45,6 @@ const scheduleMaintenance = (prisma) => {
   }
 
   const auditLogTask = safeRun('audit-log-cleanup', runAuditLogCleanup)
-
   void auditLogTask()
 
   const tokenCleanupJob = startTokenCleanupJob(prisma)

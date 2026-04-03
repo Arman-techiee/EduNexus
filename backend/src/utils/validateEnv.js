@@ -14,6 +14,10 @@ const validateEnv = () => {
     console.error(`Missing required env vars: ${missing.join(', ')}`)
     process.exit(1)
   }
+
+  if (!process.env.RESEND_SMTP_PASS) {
+    console.warn('Warning: RESEND_SMTP_PASS not set - emails disabled')
+  }
 }
 
 module.exports = validateEnv

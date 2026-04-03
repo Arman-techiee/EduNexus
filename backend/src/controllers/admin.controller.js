@@ -5,6 +5,8 @@ const { getPagination } = require('../utils/pagination')
 const logger = require('../utils/logger')
 const { ensureDepartmentExists } = require('./department.controller')
 const { recordAuditLog } = require('../utils/audit')
+const { sendMail } = require('../utils/mailer')
+const { welcomeTemplate } = require('../utils/emailTemplates')
 
 const DEFAULT_STUDENT_PASSWORD = process.env.DEFAULT_STUDENT_PASSWORD || 'password'
 
@@ -773,6 +775,15 @@ const createStudentFromApplication = async (req, res) => {
       semester: user.student.semester,
       department: user.student.department
     })
+
+    const { subject, html, text } = welcomeTemplate({
+      name: user.name,
+      email: user.email,
+      tempPassword: DEFAULT_STUDENT_PASSWORD
+    })
+
+    await sendMail({ to: user.email, subject, html, text })
+      .catch((error) => logger.error('Welcome email failed', { message: error.message, stack: error.stack, userId: user.id }))
 
     res.status(201).json({
       message: 'Student account created from application successfully!',

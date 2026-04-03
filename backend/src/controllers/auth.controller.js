@@ -6,6 +6,8 @@ const { enrollStudentInMatchingSubjects } = require('../utils/enrollment')
 const logger = require('../utils/logger')
 const { buildUploadedFileUrl } = require('../utils/fileStorage')
 const { removeUploadedFile } = require('../middleware/upload.middleware')
+const { sendMail } = require('../utils/mailer')
+const { passwordResetTemplate } = require('../utils/emailTemplates')
 const {
   signAccessToken,
   signRefreshToken,
@@ -605,14 +607,21 @@ const forgotPassword = async (req, res) => {
       }
     })
 
-    logger.info('Password reset requested', {
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
+    const { subject, html, text } = passwordResetTemplate({
+      name: user.name,
+      resetUrl
+    })
+
+    await sendMail({ to: user.email, subject, html, text })
+
+    logger.info('Password reset email sent', {
       userId: user.id,
-      email: user.email,
-      deliveryStatus: 'pending_email_integration'
+      email: user.email
     })
 
     res.json({
-      message: 'If the account exists, a password reset email will be sent when email delivery is configured.'
+      message: 'If the account exists, password reset instructions have been sent.'
     })
   } catch (error) {
     res.internalError(error)
