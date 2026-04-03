@@ -3,6 +3,8 @@ const assert = require('node:assert/strict')
 const path = require('node:path')
 const { createRequire } = require('node:module')
 
+const resolveFromTest = (...segments) => path.resolve(__dirname, '..', ...segments)
+
 const loadWithMocks = (targetPath, mocks) => {
   const modulePath = path.resolve(targetPath)
   const localRequire = createRequire(modulePath)
@@ -66,7 +68,7 @@ const createResponse = () => {
 test('login returns generic invalid credentials when user does not exist', async () => {
   process.env.QR_SIGNING_SECRET = 'test-qr-secret'
 
-  const { login } = loadWithMocks('C:\\Users\\arman\\EduNexus\\backend\\src\\controllers\\auth.controller.js', {
+  const { login } = loadWithMocks(resolveFromTest('src', 'controllers', 'auth.controller.js'), {
     '../utils/prisma': {
       user: {
         findUnique: async () => null
@@ -111,7 +113,7 @@ test('login returns generic invalid credentials when user does not exist', async
 })
 
 test('allowRoles blocks unauthorized roles with 403', async () => {
-  const { allowRoles } = loadWithMocks('C:\\Users\\arman\\EduNexus\\backend\\src\\middleware\\auth.middleware.js', {
+  const { allowRoles } = loadWithMocks(resolveFromTest('src', 'middleware', 'auth.middleware.js'), {
     '../utils/prisma': {
       user: {
         findUnique: async () => null
@@ -139,7 +141,7 @@ test('allowRoles blocks unauthorized roles with 403', async () => {
 })
 
 test('getAdminStats returns server-side aggregate counts', async () => {
-  const { getAdminStats } = loadWithMocks('C:\\Users\\arman\\EduNexus\\backend\\src\\controllers\\admin.controller.js', {
+  const { getAdminStats } = loadWithMocks(resolveFromTest('src', 'controllers', 'admin.controller.js'), {
     '../utils/prisma': {
       user: {
         count: async ({ where } = {}) => {

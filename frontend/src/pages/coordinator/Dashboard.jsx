@@ -15,6 +15,7 @@ const currentMonth = () => new Date().toISOString().slice(0, 7)
 const CoordinatorDashboard = () => {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [attendanceLoading, setAttendanceLoading] = useState(true)
   const [error, setError] = useState('')
   const [subjects, setSubjects] = useState([])
   const [assignments, setAssignments] = useState([])
@@ -22,32 +23,43 @@ const CoordinatorDashboard = () => {
   const [tickets, setTickets] = useState([])
   const [marksReview, setMarksReview] = useState({ marks: [], stats: { unpublished: 0, published: 0, total: 0 } })
   const [attendanceReports, setAttendanceReports] = useState([])
+  const [selectedSemester, setSelectedSemester] = useState('')
+
+  const availableSemesters = useMemo(() => (
+    [...new Set(
+      subjects
+        .map((subject) => Number.parseInt(subject.semester, 10))
+        .filter((semester) => Number.isInteger(semester) && semester > 0)
+    )].sort((left, right) => left - right)
+  ), [subjects])
 
   useEffect(() => {
+    const controller = new AbortController()
+
     const loadDashboard = async () => {
       try {
         setLoading(true)
         setError('')
-
-        const semesterRequests = Array.from({ length: 8 }, (_, index) => (
-          api.get('/attendance/coordinator/department-report', {
-            params: {
-              month: currentMonth(),
-              semester: index + 1
-            }
-          })
-        ))
-
-        const [subjectsRes, assignmentsRes, noticesRes, ticketsRes, marksRes, ...attendanceRes] = await Promise.all([
-          api.get('/subjects'),
-          api.get('/assignments'),
-          api.get('/notices', { params: { page: 1, limit: 5 } }),
-          api.get('/attendance/tickets'),
-          api.get('/marks/review', { params: { page: 1, limit: 20 } }),
-          ...semesterRequests
+        const [subjectsRes, assignmentsRes, noticesRes, ticketsRes, marksRes] = await Promise.all([
+          api.get('/subjects', { signal: controller.signal }),
+          api.get('/assignments', { signal: controller.signal }),
+          api.get('/notices', { params: { page: 1, limit: 5 }, signal: controller.signal }),
+          api.get('/attendance/tickets', { signal: controller.signal }),
+          api.get('/marks/review', { params: { page: 1, limit: 20 }, signal: controller.signal })
         ])
 
-        setSubjects(subjectsRes.data.subjects || [])
+        if (controller.signal.aborted) {
+          return
+        }
+
+        const nextSubjects = subjectsRes.data.subjects || []
+        const nextSemesters = [...new Set(
+          nextSubjects
+            .map((subject) => Number.parseInt(subject.semester, 10))
+            .filter((semester) => Number.isInteger(semester) && semester > 0)
+        )].sort((left, right) => left - right)
+
+        setSubjects(nextSubjects)
         setAssignments(assignmentsRes.data.assignments || [])
         setNotices(noticesRes.data.notices || [])
         setTickets(ticketsRes.data.tickets || [])
@@ -55,8 +67,61 @@ const CoordinatorDashboard = () => {
           marks: marksRes.data.marks || [],
           stats: marksRes.data.stats || { unpublished: 0, published: 0, total: 0 }
         })
-        setAttendanceReports(attendanceRes.map((response, index) => ({
-          semester: index + 1,
+
+        setSelectedSemester((current) => {
+          if (current && nextSemesters.includes(Number.parseInt(current, 10))) {
+            return current
+          }
+          return nextSemesters[0] ? String(nextSemesters[0]) : ''
+        })
+      } catch (requestError) {
+        if (requestError?.code === 'ERR_CANCELED') {
+          return
+        }
+
+        logger.error('Failed to load coordinator dashboard', requestError)
+        setError('Unable to load the coordinator dashboard right now.')
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadDashboard()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedSemester) {
+      setAttendanceReports([])
+      setAttendanceLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+
+    const loadAttendanceReport = async () => {
+      try {
+        setAttendanceLoading(true)
+
+        const response = await api.get('/attendance/coordinator/department-report', {
+          params: {
+            month: currentMonth(),
+            semester: Number.parseInt(selectedSemester, 10)
+          },
+          signal: controller.signal
+        })
+
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setAttendanceReports([{
+          semester: Number.parseInt(selectedSemester, 10),
           totalStudents: response.data.totalStudents || 0,
           summary: response.data.summary || { present: 0, absent: 0, late: 0 },
           monthlyAverage: response.data.students?.length
@@ -65,17 +130,28 @@ const CoordinatorDashboard = () => {
               response.data.students.length
             )
             : 0
-        })))
+        }])
       } catch (requestError) {
-        logger.error('Failed to load coordinator dashboard', requestError)
+        if (requestError?.code === 'ERR_CANCELED') {
+          return
+        }
+
+        logger.error('Failed to load coordinator attendance report', requestError)
+        setAttendanceReports([])
         setError('Unable to load the coordinator dashboard right now.')
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setAttendanceLoading(false)
+        }
       }
     }
 
-    void loadDashboard()
-  }, [])
+    void loadAttendanceReport()
+
+    return () => {
+      controller.abort()
+    }
+  }, [selectedSemester])
 
   const pendingTickets = tickets.filter((ticket) => ticket.status === 'PENDING')
   const recentNotices = [...notices].slice(0, 4)
@@ -140,14 +216,33 @@ const CoordinatorDashboard = () => {
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Department Attendance Pulse</h2>
-                  <p className="text-sm text-slate-500">Average monthly attendance by semester for the current reporting month.</p>
+                  <p className="text-sm text-slate-500">Average monthly attendance for the selected semester in the current reporting month.</p>
                 </div>
-                <Link to="/coordinator/attendance" className="text-sm font-medium text-[var(--color-role-accent)] hover:underline">
-                  Open attendance
-                </Link>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={selectedSemester}
+                    onChange={(event) => setSelectedSemester(event.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  >
+                    {availableSemesters.length === 0 ? (
+                      <option value="">No semesters</option>
+                    ) : (
+                      availableSemesters.map((semester) => (
+                        <option key={semester} value={semester}>
+                          Semester {semester}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <Link to="/coordinator/attendance" className="text-sm font-medium text-[var(--color-role-accent)] hover:underline">
+                    Open attendance
+                  </Link>
+                </div>
               </div>
 
-              {strongestAttendance.length === 0 ? (
+              {attendanceLoading ? (
+                <LoadingSkeleton rows={1} itemClassName="h-28" />
+              ) : strongestAttendance.length === 0 ? (
                 <EmptyState
                   icon="📊"
                   title="No attendance reports yet"

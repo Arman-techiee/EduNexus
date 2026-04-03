@@ -27,17 +27,23 @@ const StudentDashboard = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    const controller = new AbortController()
+
     const loadDashboard = async () => {
       try {
         setLoading(true)
         setError('')
         const [subjectsRes, attendanceRes, assignmentsRes, noticesRes, routineRes] = await Promise.all([
-          api.get('/subjects'),
-          api.get('/attendance/my'),
-          api.get('/assignments'),
-          api.get('/notices', { params: { page: 1, limit: 5 } }),
-          api.get('/routines')
+          api.get('/subjects', { signal: controller.signal }),
+          api.get('/attendance/my', { signal: controller.signal }),
+          api.get('/assignments', { signal: controller.signal }),
+          api.get('/notices', { params: { page: 1, limit: 5 }, signal: controller.signal }),
+          api.get('/routines', { signal: controller.signal })
         ])
+
+        if (controller.signal.aborted) {
+          return
+        }
 
         setSubjects(subjectsRes.data.subjects || [])
         setAttendanceSummary(attendanceRes.data.summary || [])
@@ -45,14 +51,24 @@ const StudentDashboard = () => {
         setNotices(noticesRes.data.notices || [])
         setRoutines(routineRes.data.routines || [])
       } catch (requestError) {
+        if (requestError?.code === 'ERR_CANCELED') {
+          return
+        }
+
         logger.error('Failed to load student dashboard', requestError)
         setError('Unable to load your dashboard right now.')
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
     void loadDashboard()
+
+    return () => {
+      controller.abort()
+    }
   }, [])
 
   const attendanceByCode = useMemo(() => new Map(
