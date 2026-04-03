@@ -40,6 +40,7 @@ import StudentMarks from './pages/student/Marks'
 import StudentNotices from './pages/student/Notices'
 import StudentMaterials from './pages/student/Materials'
 import StudentRoutine from './pages/student/Routine'
+import StudentIdCard from './pages/student/IdCard'
 import ProfilePage from './pages/shared/ProfilePage'
 import { getHomeRouteForUser } from './utils/auth'
 import LoadingSkeleton from './components/LoadingSkeleton'
@@ -138,6 +139,7 @@ const AppRoutes = () => {
       {/* Student Routes */}
       <Route path="/student" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentDashboard /></ProtectedRoute>} />
       <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['STUDENT']}><ProfilePage /></ProtectedRoute>} />
+      <Route path="/student/id-card" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentIdCard /></ProtectedRoute>} />
       <Route path="/student/scan" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentAttendance /></ProtectedRoute>} />
       <Route path="/student/subjects" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentSubjects /></ProtectedRoute>} />
       <Route path="/student/attendance" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentAttendance /></ProtectedRoute>} />

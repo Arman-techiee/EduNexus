@@ -8,6 +8,7 @@ import {
   CreditCard,
   FileText,
   FolderOpen,
+  IdCard,
   Percent,
   UserCircle2,
   Users
@@ -27,6 +28,7 @@ const StudentLayout = ({ children, noticesCount = 0 }) => {
     { path: '/student/requests', label: 'Requests', icon: FileText, meta: 'Absence explanations' },
     { path: '/student/marks', label: 'Results', icon: FileText, meta: 'Exam results' },
     { path: '/student/materials', label: 'Books', icon: FolderOpen, meta: 'Books and materials' },
+    { path: '/student/id-card', label: 'ID Card', icon: IdCard, meta: 'Student identity card' },
     { label: 'Staff Info', icon: Users, meta: 'Faculty contacts', disabled: true },
     { path: '/student/profile', label: 'Profile', icon: UserCircle2, meta: 'My details' },
     { label: 'Fees', icon: CreditCard, meta: 'Billing and payments', disabled: true }
