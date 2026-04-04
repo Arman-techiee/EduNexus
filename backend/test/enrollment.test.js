@@ -78,6 +78,7 @@ test('enrollStudentInMatchingSubjects targets shared and department subjects', a
 
 test('syncMatchingStudentsForSubject returns empty state when no students match', async () => {
   const transactions = []
+  const deleteCalls = []
   const modulePath = path.resolve(__dirname, '../src/utils/enrollment.js')
   const { syncMatchingStudentsForSubject } = loadWithMocks(modulePath, {
     './prisma': {
@@ -85,7 +86,10 @@ test('syncMatchingStudentsForSubject returns empty state when no students match'
         findMany: async () => []
       },
       subjectEnrollment: {
-        deleteMany: (payload) => ({ action: 'deleteMany', payload }),
+        deleteMany: (payload) => {
+          deleteCalls.push(payload)
+          return ({ action: 'deleteMany', payload })
+        },
         createMany: (payload) => ({ action: 'createMany', payload })
       },
       $transaction: async (operations) => {
@@ -101,8 +105,8 @@ test('syncMatchingStudentsForSubject returns empty state when no students match'
     department: 'BIM'
   })
 
-  assert.equal(transactions.length, 1)
-  assert.equal(transactions[0].length, 1)
+  assert.equal(transactions.length, 0)
+  assert.equal(deleteCalls.length, 0)
   assert.deepEqual(result, {
     enrolledCount: 0,
     studentIds: []

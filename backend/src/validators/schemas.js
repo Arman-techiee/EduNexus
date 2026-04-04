@@ -29,6 +29,7 @@ const attendanceStatusEnum = z.enum(['PRESENT', 'ABSENT', 'LATE'])
 const examTypeEnum = z.enum(['INTERNAL', 'MIDTERM', 'FINAL', 'PREBOARD', 'PRACTICAL'])
 const exportFormatEnum = z.enum(['pdf', 'xlsx'])
 const applicationStatusEnum = z.enum(['PENDING', 'REVIEWED', 'CONVERTED'])
+const reviewableApplicationStatusEnum = z.enum(['PENDING', 'REVIEWED'])
 const absenceTicketStatusEnum = z.enum(['PENDING', 'APPROVED', 'REJECTED'])
 const devicePlatformEnum = z.enum(['IOS', 'ANDROID'])
 
@@ -377,7 +378,7 @@ const schemas = {
     updateStudentApplicationStatus: {
       params: uuidParam,
       body: z.object({
-        status: applicationStatusEnum
+        status: reviewableApplicationStatusEnum
       })
     },
     createStudentFromApplication: {

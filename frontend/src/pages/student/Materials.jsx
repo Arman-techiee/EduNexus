@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import LoadingSkeleton from '../../components/LoadingSkeleton'
 import EmptyState from '../../components/EmptyState'
 import PageHeader from '../../components/PageHeader'
@@ -21,28 +21,28 @@ const StudentMaterials = () => {
     execute: executeSubjects
   } = useApi({ initialData: [] })
 
-  async function fetchMaterials() {
+  const fetchMaterials = useCallback(async () => {
     await executeMaterials(
       (signal) => api.get('/materials', { signal }),
       {
         transform: (response) => response.data.materials
       }
     )
-  }
+  }, [executeMaterials])
 
-  async function fetchSubjects() {
+  const fetchSubjects = useCallback(async () => {
     await executeSubjects(
       (signal) => api.get('/subjects', { signal }),
       {
         transform: (response) => response.data.subjects
       }
     )
-  }
+  }, [executeSubjects])
 
   useEffect(() => {
-    fetchMaterials()
-    fetchSubjects()
-  }, [])
+    void fetchMaterials()
+    void fetchSubjects()
+  }, [fetchMaterials, fetchSubjects])
 
   const filtered = filterSubject
     ? materials.filter(m => m.subject?.code === filterSubject)

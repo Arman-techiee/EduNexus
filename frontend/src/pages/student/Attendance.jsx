@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertCircle, Camera, Download, FileText, Square, Upload } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import StudentLayout from '../../layouts/StudentLayout'
@@ -60,28 +60,7 @@ const StudentAttendance = () => {
   const detectorRef = useRef(null)
   const canvasRef = useRef(null)
 
-  useEffect(() => {
-    fetchAttendance()
-  }, [page])
-
-  useEffect(() => {
-    setScannerSupported(canUseCameraQrScanner())
-
-    return () => {
-      stopScanner()
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!scannerSupported) return
-
-    const shouldAutoStart = location.pathname === '/student/scan' || new URLSearchParams(location.search).get('scan') === '1'
-    if (shouldAutoStart) {
-      startScanner()
-    }
-  }, [location.pathname, location.search, scannerSupported])
-
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     try {
       setError('')
       const [attendanceResult, ticketsResult] = await Promise.allSettled([
@@ -109,9 +88,9 @@ const StudentAttendance = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [limit, page])
 
-  const stopScanner = () => {
+  const stopScanner = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
       intervalRef.current = null
@@ -123,9 +102,9 @@ const StudentAttendance = () => {
     }
 
     detectorRef.current = null
-  }
+  }, [])
 
-  const submitDailyQr = async (qrData) => {
+  const submitDailyQr = useCallback(async (qrData) => {
     if (!qrData) return
 
     try {
@@ -148,7 +127,7 @@ const StudentAttendance = () => {
     } finally {
       setSubmittingScan(false)
     }
-  }
+  }, [fetchAttendance, showToast, stopScanner])
 
   const downloadAttendancePdf = async () => {
     try {
@@ -163,7 +142,7 @@ const StudentAttendance = () => {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       const contentDisposition = response.headers['content-disposition'] || ''
-      const fileNameMatch = contentDisposition.match(/filename=\"?([^"]+)\"?/)
+      const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
       link.href = url
       link.download = fileNameMatch?.[1] || 'attendance-report.pdf'
       document.body.appendChild(link)
@@ -178,7 +157,7 @@ const StudentAttendance = () => {
     }
   }
 
-  const startScanner = async () => {
+  const startScanner = useCallback(async () => {
     if (!scannerSupported) {
       setScannerStatus('Camera scanning is not available on this device. Use the manual QR text box below.')
       return
@@ -227,7 +206,28 @@ const StudentAttendance = () => {
       setError('Camera access was denied or unavailable')
       stopScanner()
     }
-  }
+  }, [scannerSupported, stopScanner, submitDailyQr, submittingScan])
+
+  useEffect(() => {
+    void fetchAttendance()
+  }, [fetchAttendance])
+
+  useEffect(() => {
+    setScannerSupported(canUseCameraQrScanner())
+
+    return () => {
+      stopScanner()
+    }
+  }, [stopScanner])
+
+  useEffect(() => {
+    if (!scannerSupported) return
+
+    const shouldAutoStart = location.pathname === '/student/scan' || new URLSearchParams(location.search).get('scan') === '1'
+    if (shouldAutoStart) {
+      void startScanner()
+    }
+  }, [location.pathname, location.search, scannerSupported, startScanner])
 
   return (
     <StudentLayout>

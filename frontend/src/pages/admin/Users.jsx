@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Power, Trash2, UserPlus } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
 import CoordinatorLayout from '../../layouts/CoordinatorLayout'
@@ -90,10 +90,6 @@ const Users = () => {
   const { values, errors, handleChange, handleSubmit, setValues, setErrors } = useForm(initialUserValues, validateUserForm)
 
   useEffect(() => {
-    fetchUsers()
-  }, [filterRole, page, debouncedSearchTerm])
-
-  useEffect(() => {
     setPage(1)
   }, [filterRole, debouncedSearchTerm])
 
@@ -103,7 +99,7 @@ const Users = () => {
     })
   }, [loadDepartments])
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -126,7 +122,11 @@ const Users = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [debouncedSearchTerm, filterRole, limit, page])
+
+  useEffect(() => {
+    void fetchUsers()
+  }, [fetchUsers])
 
   const handleCreateUser = async () => {
     setError('')

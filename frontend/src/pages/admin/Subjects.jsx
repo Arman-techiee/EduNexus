@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { LoaderCircle, Pencil, Plus, Trash2, Users } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
 import CoordinatorLayout from '../../layouts/CoordinatorLayout'
@@ -45,20 +45,12 @@ const Subjects = () => {
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300)
 
   useEffect(() => {
-    fetchInstructors()
-  }, [])
-
-  useEffect(() => {
-    void fetchSubjects()
-  }, [page, debouncedSearchTerm])
-
-  useEffect(() => {
     void loadDepartments().catch((error) => {
       logger.error('Failed to load departments', error)
     })
   }, [loadDepartments])
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     try {
       setLoading(true)
       const res = await api.get('/subjects', {
@@ -75,16 +67,24 @@ const Subjects = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [debouncedSearchTerm, limit, page])
 
-  const fetchInstructors = async () => {
+  const fetchInstructors = useCallback(async () => {
     try {
       const res = await api.get('/admin/users?role=INSTRUCTOR')
       setInstructors(res.data.users)
     } catch (error) {
       logger.error('Failed to load instructors', error)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void fetchInstructors()
+  }, [fetchInstructors])
+
+  useEffect(() => {
+    void fetchSubjects()
+  }, [fetchSubjects])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

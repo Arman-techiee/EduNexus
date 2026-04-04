@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
 import CoordinatorLayout from '../../layouts/CoordinatorLayout'
@@ -38,16 +38,12 @@ const StudentApplications = () => {
   })
 
   useEffect(() => {
-    fetchApplications()
-  }, [page, filterStatus])
-
-  useEffect(() => {
     void loadDepartments().catch((requestError) => {
       setError(getFriendlyErrorMessage(requestError, 'Unable to load departments right now.'))
     })
   }, [loadDepartments])
 
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({ page: String(page), limit: String(limit) })
@@ -60,7 +56,11 @@ const StudentApplications = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterStatus, limit, page])
+
+  useEffect(() => {
+    void fetchApplications()
+  }, [fetchApplications])
 
   const openApplication = (application) => {
     const matchingDepartment = departments.find((department) => (

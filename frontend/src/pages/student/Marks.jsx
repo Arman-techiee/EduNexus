@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import StudentLayout from '../../layouts/StudentLayout'
 import api from '../../utils/api'
 import PageHeader from '../../components/PageHeader'
@@ -63,7 +63,7 @@ const StudentMarks = () => {
   const [downloadingMarksheet, setDownloadingMarksheet] = useState(false)
   const [error, setError] = useState('')
 
-  const fetchMarks = async (signal) => {
+  const fetchMarks = useCallback(async (signal) => {
     try {
       setLoading(true)
       setError('')
@@ -111,13 +111,13 @@ const StudentMarks = () => {
         setLoading(false)
       }
     }
-  }
+  }, [limit, page, selectedExamType])
 
   useEffect(() => {
     const controller = new AbortController()
     void fetchMarks(controller.signal)
     return () => controller.abort()
-  }, [page, selectedExamType])
+  }, [fetchMarks])
 
   const downloadMarksheet = async () => {
     try {
@@ -133,7 +133,7 @@ const StudentMarks = () => {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       const contentDisposition = response.headers['content-disposition'] || ''
-      const fileNameMatch = contentDisposition.match(/filename=\"?([^"]+)\"?/)
+      const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
       link.href = url
       link.download = fileNameMatch?.[1] || `marksheet-${selectedExamType || 'result'}.pdf`
       document.body.appendChild(link)

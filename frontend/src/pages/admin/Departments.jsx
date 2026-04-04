@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
 import Alert from '../../components/Alert'
@@ -30,11 +30,7 @@ const Departments = () => {
     execute
   } = useApi({ initialData: [], initialLoading: true })
 
-  useEffect(() => {
-    fetchDepartments()
-  }, [])
-
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     await execute(
       () => api.get('/departments'),
       {
@@ -42,7 +38,11 @@ const Departments = () => {
         transform: (response) => response.data.departments
       }
     )
-  }
+  }, [execute])
+
+  useEffect(() => {
+    void fetchDepartments()
+  }, [fetchDepartments])
 
   const openCreateModal = () => {
     setEditingDepartment(null)

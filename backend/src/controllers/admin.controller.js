@@ -683,6 +683,12 @@ const updateStudentApplicationStatus = async (req, res) => {
     const { id } = req.params
     const { status } = req.body
 
+    if (status === 'CONVERTED') {
+      return res.status(400).json({
+        message: 'Student applications can only be marked as converted when an account is created from the application.'
+      })
+    }
+
     const application = await prisma.studentApplication.update({
       where: { id },
       data: {

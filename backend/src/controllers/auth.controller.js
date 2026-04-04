@@ -30,6 +30,8 @@ const buildAuthUser = (user) => ({
 })
 
 const isPasswordResetEnabled = () => process.env.ENABLE_PASSWORD_RESET === 'true'
+const MAX_FAILED_LOGIN_ATTEMPTS = 5
+const LOGIN_LOCKOUT_MINUTES = 15
 
 const createSignedQrPayload = (payload) => JSON.stringify({
   payload,
@@ -106,6 +108,12 @@ const issueAuthSession = async (user, res, req, previousRefreshToken) => {
 const getResetTokenExpiry = () => {
   const expiresAt = new Date()
   expiresAt.setMinutes(expiresAt.getMinutes() + 30)
+  return expiresAt
+}
+
+const getLoginLockoutExpiry = () => {
+  const expiresAt = new Date()
+  expiresAt.setMinutes(expiresAt.getMinutes() + LOGIN_LOCKOUT_MINUTES)
   return expiresAt
 }
 
@@ -321,8 +329,25 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      return res.status(423).json({
+        message: 'Too many failed login attempts. Please try again later.'
+      })
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
+      const failedLoginAttempts = (user.failedLoginAttempts || 0) + 1
+      const shouldLockAccount = failedLoginAttempts >= MAX_FAILED_LOGIN_ATTEMPTS
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts,
+          lockedUntil: shouldLockAccount ? getLoginLockoutExpiry() : null
+        }
+      })
+
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
@@ -331,6 +356,16 @@ const login = async (req, res) => {
         message: user.suspensionReason
           ? `Your account is suspended. Reason: ${user.suspensionReason}`
           : 'Your account is disabled'
+      })
+    }
+
+    if (user.failedLoginAttempts || user.lockedUntil) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: 0,
+          lockedUntil: null
+        }
       })
     }
 
@@ -711,14 +746,23 @@ const resetPassword = async (req, res) => {
 
     const hashedPassword = await hashPassword(password)
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password: hashedPassword,
-        mustChangePassword: false,
-        passwordResetTokenHash: null,
-        passwordResetExpiresAt: null
-      }
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          mustChangePassword: false,
+          passwordResetTokenHash: null,
+          passwordResetExpiresAt: null,
+          failedLoginAttempts: 0,
+          lockedUntil: null
+        }
+      })
+
+      await tx.refreshToken.updateMany({
+        where: { userId: user.id },
+        data: { revokedAt: new Date() }
+      })
     })
 
     res.json({ message: 'Password reset successfully!' })

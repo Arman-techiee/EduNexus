@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import InstructorLayout from '../../layouts/InstructorLayout'
 import api from '../../utils/api'
@@ -50,13 +50,7 @@ const InstructorNotices = () => {
   }
   const { values, errors, handleChange, handleSubmit, setValues, setErrors } = useForm(initialNoticeValues, validateNotice)
 
-  useEffect(() => {
-    const controller = new AbortController()
-    void fetchNotices(controller.signal)
-    return () => controller.abort()
-  }, [page])
-
-  const fetchNotices = async (signal) => {
+  const fetchNotices = useCallback(async (signal) => {
     try {
       setLoading(true)
       const res = await api.get(`/notices?page=${page}&limit=${limit}`, { signal })
@@ -70,7 +64,13 @@ const InstructorNotices = () => {
         setLoading(false)
       }
     }
-  }
+  }, [limit, page])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchNotices(controller.signal)
+    return () => controller.abort()
+  }, [fetchNotices])
 
   const saveNotice = async (formValues) => {
     setError('')

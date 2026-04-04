@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import InstructorLayout from '../../layouts/InstructorLayout'
@@ -53,37 +53,7 @@ const Attendance = () => {
   const [scanningStudentId, setScanningStudentId] = useState(false)
   const debouncedSearch = useDebouncedValue(search, 250)
 
-  useEffect(() => {
-    fetchSubjects()
-  }, [])
-
-  useEffect(() => {
-    if (isCoordinator) {
-      setSelectedSubject('')
-      if (!selectedSemester) {
-      setCoordinatorRecords([])
-      setMonthlyStudents([])
-      setMonthlyMeta({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
-        setSummary({ total: 0, present: 0, absent: 0, late: 0 })
-        return
-      }
-      fetchCoordinatorDepartmentReport()
-      return
-    }
-
-    if (!selectedSubject || !selectedSemester || !selectedSection) {
-      setRoster([])
-      setAttendance([])
-      setMonthlyStudents([])
-      setMonthlyMeta({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
-      setSummary({ total: 0, present: 0, absent: 0, late: 0 })
-      return
-    }
-
-    fetchAttendanceWorkspace()
-  }, [isCoordinator, selectedSubject, selectedDate, selectedMonth, selectedSemester, selectedSection])
-
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     try {
       const res = await api.get('/subjects')
       setSubjects(res.data.subjects)
@@ -91,9 +61,9 @@ const Attendance = () => {
       logger.error(fetchError)
       setError('Unable to load subjects')
     }
-  }
+  }, [])
 
-  const fetchAttendanceWorkspace = async () => {
+  const fetchAttendanceWorkspace = useCallback(async () => {
     try {
       setLoading(true)
       setError('')
@@ -124,9 +94,9 @@ const Attendance = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedDate, selectedSection, selectedSemester, selectedSubject])
 
-  const fetchCoordinatorDepartmentReport = async () => {
+  const fetchCoordinatorDepartmentReport = useCallback(async () => {
     if (!selectedSemester) {
       setError('Please select a semester to load the department report.')
       return
@@ -163,7 +133,44 @@ const Attendance = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedMonth, selectedSection, selectedSemester])
+
+  useEffect(() => {
+    void fetchSubjects()
+  }, [fetchSubjects])
+
+  useEffect(() => {
+    if (isCoordinator) {
+      setSelectedSubject('')
+      if (!selectedSemester) {
+        setCoordinatorRecords([])
+        setMonthlyStudents([])
+        setMonthlyMeta({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
+        setSummary({ total: 0, present: 0, absent: 0, late: 0 })
+        return
+      }
+      void fetchCoordinatorDepartmentReport()
+      return
+    }
+
+    if (!selectedSubject || !selectedSemester || !selectedSection) {
+      setRoster([])
+      setAttendance([])
+      setMonthlyStudents([])
+      setMonthlyMeta({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
+      setSummary({ total: 0, present: 0, absent: 0, late: 0 })
+      return
+    }
+
+    void fetchAttendanceWorkspace()
+  }, [
+    fetchAttendanceWorkspace,
+    fetchCoordinatorDepartmentReport,
+    isCoordinator,
+    selectedSection,
+    selectedSemester,
+    selectedSubject
+  ])
 
   const generateQR = async () => {
     if (!selectedSubject) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import Alert from '../../components/Alert'
@@ -43,14 +43,6 @@ const Assignments = () => {
     execute: executeSubjects
   } = useApi({ initialData: [] })
 
-  useEffect(() => {
-    void fetchAssignments()
-  }, [selectedSubject])
-
-  useEffect(() => {
-    void fetchSubjects()
-  }, [])
-
   const openPreview = (title, fileUrl) => {
     const resolvedUrl = resolveFileUrl(fileUrl)
     if (!resolvedUrl) {
@@ -61,7 +53,7 @@ const Assignments = () => {
     setPreviewFile({ title, url: resolvedUrl })
   }
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
     await executeAssignments(
       (signal) => api.get('/assignments', {
         signal,
@@ -71,16 +63,24 @@ const Assignments = () => {
         transform: (response) => response.data.assignments
       }
     )
-  }
+  }, [executeAssignments, selectedSubject])
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     await executeSubjects(
       (signal) => api.get('/subjects', { signal }),
       {
         transform: (response) => response.data.subjects
       }
     )
-  }
+  }, [executeSubjects])
+
+  useEffect(() => {
+    void fetchAssignments()
+  }, [fetchAssignments])
+
+  useEffect(() => {
+    void fetchSubjects()
+  }, [fetchSubjects])
 
   const handleSubmit = async (event) => {
     event.preventDefault()

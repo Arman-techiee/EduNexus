@@ -20,6 +20,8 @@ model User {
   address   String?
   avatar    String?
   isActive  Boolean  @default(true)
+  failedLoginAttempts Int @default(0)
+  lockedUntil DateTime?
   mustChangePassword Boolean @default(false)
   profileCompleted Boolean @default(false)
   passwordResetTokenHash String?

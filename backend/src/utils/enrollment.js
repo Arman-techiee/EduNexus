@@ -71,26 +71,27 @@ const syncMatchingStudentsForSubject = async ({ subjectId, semester, department 
 
   const matchingStudentIds = matchingStudents.map((student) => student.id)
 
+  if (matchingStudentIds.length === 0) {
+    return {
+      enrolledCount: 0,
+      studentIds: []
+    }
+  }
+
   await prisma.$transaction([
     prisma.subjectEnrollment.deleteMany({
       where: {
         subjectId,
-        ...(matchingStudentIds.length > 0
-          ? { studentId: { notIn: matchingStudentIds } }
-          : {})
+        studentId: { notIn: matchingStudentIds }
       }
     }),
-    ...(matchingStudentIds.length > 0
-      ? [
-          prisma.subjectEnrollment.createMany({
-            data: matchingStudentIds.map((studentId) => ({
-              subjectId,
-              studentId
-            })),
-            skipDuplicates: true
-          })
-        ]
-      : [])
+    prisma.subjectEnrollment.createMany({
+      data: matchingStudentIds.map((studentId) => ({
+        subjectId,
+        studentId
+      })),
+      skipDuplicates: true
+    })
   ])
 
   return {

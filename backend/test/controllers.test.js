@@ -129,6 +129,142 @@ test('login returns generic invalid credentials when user does not exist', async
   assert.deepEqual(res.body, { message: 'Invalid credentials' })
 })
 
+test('login locks the account after repeated failed password attempts', async () => {
+  process.env.QR_SIGNING_SECRET = 'test-qr-secret'
+  const updates = []
+
+  const { login } = loadWithMocks(resolveFromTest('src', 'controllers', 'auth.controller.js'), authControllerMocks({
+    '../utils/prisma': {
+      user: {
+        findUnique: async () => ({
+          id: 'user-1',
+          email: 'student@example.com',
+          password: 'hashed-password',
+          role: 'STUDENT',
+          isActive: true,
+          failedLoginAttempts: 4,
+          lockedUntil: null
+        }),
+        update: async (payload) => {
+          updates.push(payload)
+          return payload
+        }
+      }
+    }
+  }))
+
+  const req = {
+    body: {
+      email: 'student@example.com',
+      password: 'wrong-password'
+    }
+  }
+  const res = createResponse()
+
+  await login(req, res)
+
+  assert.equal(res.statusCode, 401)
+  assert.equal(updates.length, 1)
+  assert.equal(updates[0].data.failedLoginAttempts, 5)
+  assert.ok(updates[0].data.lockedUntil instanceof Date)
+})
+
+test('login blocks requests while the account is locked', async () => {
+  process.env.QR_SIGNING_SECRET = 'test-qr-secret'
+
+  const { login } = loadWithMocks(resolveFromTest('src', 'controllers', 'auth.controller.js'), authControllerMocks({
+    '../utils/prisma': {
+      user: {
+        findUnique: async () => ({
+          id: 'user-1',
+          email: 'student@example.com',
+          password: 'hashed-password',
+          role: 'STUDENT',
+          isActive: true,
+          failedLoginAttempts: 5,
+          lockedUntil: new Date(Date.now() + 60_000)
+        })
+      }
+    }
+  }))
+
+  const req = {
+    body: {
+      email: 'student@example.com',
+      password: 'Password123'
+    }
+  }
+  const res = createResponse()
+
+  await login(req, res)
+
+  assert.equal(res.statusCode, 423)
+  assert.deepEqual(res.body, {
+    message: 'Too many failed login attempts. Please try again later.'
+  })
+})
+
+test('resetPassword revokes existing refresh tokens inside the password reset transaction', async () => {
+  const transactionCalls = []
+
+  const { resetPassword } = loadWithMocks(resolveFromTest('src', 'controllers', 'auth.controller.js'), authControllerMocks({
+    '../utils/security': {
+      hashPassword: async () => 'hashed-new-password',
+      getRequiredSecret: () => 'test-secret'
+    },
+    '../utils/prisma': {
+      user: {
+        findFirst: async () => ({
+          id: 'user-1',
+          email: 'student@example.com'
+        })
+      },
+      $transaction: async (callback) => callback({
+        user: {
+          update: async (payload) => {
+            transactionCalls.push({ type: 'user.update', payload })
+            return payload
+          }
+        },
+        refreshToken: {
+          updateMany: async (payload) => {
+            transactionCalls.push({ type: 'refreshToken.updateMany', payload })
+            return { count: 2 }
+          }
+        }
+      })
+    }
+  }))
+
+  const previousFlag = process.env.ENABLE_PASSWORD_RESET
+  process.env.ENABLE_PASSWORD_RESET = 'true'
+
+  try {
+    const req = {
+      body: {
+        token: 'valid-reset-token',
+        password: 'Password123'
+      }
+    }
+    const res = createResponse()
+
+    await resetPassword(req, res)
+
+    assert.equal(res.statusCode, 200)
+    assert.equal(transactionCalls.length, 2)
+    assert.equal(transactionCalls[0].type, 'user.update')
+    assert.equal(transactionCalls[1].type, 'refreshToken.updateMany')
+    assert.equal(transactionCalls[1].payload.where.userId, 'user-1')
+    assert.ok(transactionCalls[1].payload.data.revokedAt instanceof Date)
+  } finally {
+    if (previousFlag === undefined) {
+      delete process.env.ENABLE_PASSWORD_RESET
+    } else {
+      process.env.ENABLE_PASSWORD_RESET = previousFlag
+    }
+  }
+})
+
 test('register blocks self-registration when OPEN_REGISTRATION is disabled', async () => {
   const previousOpenRegistration = process.env.OPEN_REGISTRATION
   process.env.OPEN_REGISTRATION = 'false'
@@ -254,6 +390,53 @@ test('getAdminStats returns server-side aggregate counts', async () => {
   assert.deepEqual(secondRes.body, firstRes.body)
   assert.equal(userCountCalls, 5)
   assert.equal(subjectCountCalls, 1)
+})
+
+test('updateStudentApplicationStatus blocks manual conversion without account creation', async () => {
+  const { updateStudentApplicationStatus } = loadWithMocks(resolveFromTest('src', 'controllers', 'admin.controller.js'), {
+    '../utils/prisma': {
+      studentApplication: {
+        update: async () => {
+          throw new Error('should not update')
+        }
+      }
+    },
+    'bcryptjs': {
+      hash: async () => 'hashed'
+    },
+    '../utils/enrollment': {
+      enrollStudentInMatchingSubjects: async () => {}
+    },
+    '../utils/logger': {
+      error: () => {}
+    },
+    './department.controller': {
+      ensureDepartmentExists: async () => true
+    },
+    '../utils/audit': {
+      recordAuditLog: async () => {}
+    },
+    '../utils/mailer': {
+      sendMail: async () => {}
+    },
+    '../utils/emailTemplates': {
+      welcomeTemplate: () => ({ subject: 'Welcome', html: '<p>Welcome</p>', text: 'Welcome' })
+    }
+  })
+
+  const req = {
+    params: { id: 'application-1' },
+    body: { status: 'CONVERTED' },
+    user: { id: 'admin-1' }
+  }
+  const res = createResponse()
+
+  await updateStudentApplicationStatus(req, res)
+
+  assert.equal(res.statusCode, 400)
+  assert.deepEqual(res.body, {
+    message: 'Student applications can only be marked as converted when an account is created from the application.'
+  })
 })
 
 test('submitStudentIntake upserts the application payload and returns success', async () => {

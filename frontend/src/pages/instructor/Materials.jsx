@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import Alert from '../../components/Alert'
@@ -39,12 +39,7 @@ const InstructorMaterials = () => {
     execute: executeSubjects
   } = useApi({ initialData: [] })
 
-  useEffect(() => {
-    fetchMaterials()
-    fetchSubjects()
-  }, [])
-
-  const fetchMaterials = async () => {
+  const fetchMaterials = useCallback(async () => {
     await executeMaterials(
       (signal) => api.get('/materials', { signal }),
       {
@@ -52,16 +47,21 @@ const InstructorMaterials = () => {
         transform: (response) => response.data.materials
       }
     )
-  }
+  }, [executeMaterials])
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     await executeSubjects(
       (signal) => api.get('/subjects', { signal }),
       {
         transform: (response) => response.data.subjects
       }
     )
-  }
+  }, [executeSubjects])
+
+  useEffect(() => {
+    void fetchMaterials()
+    void fetchSubjects()
+  }, [fetchMaterials, fetchSubjects])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
