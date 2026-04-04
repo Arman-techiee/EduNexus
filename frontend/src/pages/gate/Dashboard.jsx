@@ -6,6 +6,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton'
 import QrScanPanel from '../../components/QrScanPanel'
 import StatCard from '../../components/StatCard'
 import api from '../../utils/api'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 import { getFriendlyErrorMessage } from '../../utils/errors'
 import { useToast } from '../../components/Toast'
@@ -24,7 +25,7 @@ const GateDashboard = () => {
   const [scanBusy, setScanBusy] = useState(false)
   const { showToast } = useToast()
 
-  const fetchLiveQr = useCallback(async ({ silent = false } = {}) => {
+  const fetchLiveQr = useCallback(async ({ silent = false, signal } = {}) => {
     try {
       if (silent) {
         setRefreshing(true)
@@ -33,25 +34,34 @@ const GateDashboard = () => {
       }
 
       setError('')
-      const res = await api.get('/attendance/gatekeeper/live-qr')
+      const res = await api.get('/attendance/gatekeeper/live-qr', { signal })
       setLiveQrState(res.data)
     } catch (requestError) {
+      if (isRequestCanceled(requestError)) return
       logger.error(requestError)
       setError(getFriendlyErrorMessage(requestError, 'Unable to load the Student QR right now.'))
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
   }, [])
 
   useEffect(() => {
-    void fetchLiveQr()
+    const controller = new AbortController()
+    void fetchLiveQr({ signal: controller.signal })
 
     const intervalId = window.setInterval(() => {
-      void fetchLiveQr({ silent: true })
+      const intervalController = new AbortController()
+      void fetchLiveQr({ silent: true, signal: intervalController.signal })
+      window.setTimeout(() => intervalController.abort(), 14000)
     }, 15000)
 
-    return () => window.clearInterval(intervalId)
+    return () => {
+      controller.abort()
+      window.clearInterval(intervalId)
+    }
   }, [fetchLiveQr])
 
   const statusText = useMemo(() => {

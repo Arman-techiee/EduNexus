@@ -12,6 +12,7 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../context/AuthContext'
 import api, { clearAuthState, resolveFileUrl } from '../../utils/api'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+import { isRequestCanceled } from '../../utils/http'
 
 const formatActivityLabel = (action) => ({
   AUTH_LOGIN: 'Signed in',
@@ -74,7 +75,9 @@ const ProfilePage = () => {
   }, [profile?.avatar, selectedAvatarFile, user?.avatar])
 
   useEffect(() => {
-    fetchProfile()
+    const controller = new AbortController()
+    void fetchProfile(controller.signal)
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
@@ -85,15 +88,15 @@ const ProfilePage = () => {
     }
   }, [avatarPreviewUrl, selectedAvatarFile])
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (signal) => {
     try {
       setLoading(true)
       setActivityLoading(true)
       setActivityError('')
 
       const [profileRes, activityRes] = await Promise.all([
-        api.get('/auth/me'),
-        api.get('/auth/activity')
+        api.get('/auth/me', { signal }),
+        api.get('/auth/activity', { signal })
       ])
       const currentUser = profileRes.data.user
       setProfile(currentUser)
@@ -116,11 +119,14 @@ const ProfilePage = () => {
         section: currentUser.student?.section || ''
       })
     } catch (requestError) {
+      if (isRequestCanceled(requestError)) return
       setError(getFriendlyErrorMessage(requestError, 'Unable to load the profile right now.'))
       setActivityError(getFriendlyErrorMessage(requestError, 'Unable to load recent activity right now.'))
     } finally {
-      setLoading(false)
-      setActivityLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+        setActivityLoading(false)
+      }
     }
   }
 

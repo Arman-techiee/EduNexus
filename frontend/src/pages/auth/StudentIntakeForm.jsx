@@ -20,6 +20,7 @@ import { useReferenceData } from '../../context/ReferenceDataContext'
 import useForm from '../../hooks/useForm'
 import api from '../../utils/api'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+import { isRequestCanceled } from '../../utils/http'
 
 const initialValues = {
   fullName: '',
@@ -131,22 +132,20 @@ const StudentIntakeForm = () => {
   })
 
   useEffect(() => {
-    let isMounted = true
+    const controller = new AbortController()
 
-    loadDepartments()
+    loadDepartments({ signal: controller.signal })
       .catch((requestError) => {
-        if (!isMounted) return
+        if (isRequestCanceled(requestError) || controller.signal.aborted) return
         setError(getFriendlyErrorMessage(requestError, 'Unable to load departments right now.'))
       })
       .finally(() => {
-        if (isMounted) {
+        if (!controller.signal.aborted) {
           setLoadingDepartments(false)
         }
       })
 
-    return () => {
-      isMounted = false
-    }
+    return () => controller.abort()
   }, [loadDepartments])
 
   const onSubmit = async () => {

@@ -8,6 +8,7 @@ import Alert from '../../components/Alert'
 import { useToast } from '../../components/Toast'
 import api from '../../utils/api'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+import { isRequestCanceled } from '../../utils/http'
 
 const StudentTickets = () => {
   const [tickets, setTickets] = useState([])
@@ -18,22 +19,27 @@ const StudentTickets = () => {
   const [submittingId, setSubmittingId] = useState('')
   const { showToast } = useToast()
 
-  const loadTickets = async () => {
+  const loadTickets = async (signal) => {
     try {
       setLoading(true)
       setError('')
-      const res = await api.get('/attendance/tickets/my')
+      const res = await api.get('/attendance/tickets/my', { signal })
       setTickets(res.data.tickets || [])
       setAbsencesWithoutTicket(res.data.absencesWithoutTicket || [])
     } catch (requestError) {
+      if (isRequestCanceled(requestError)) return
       setError(getFriendlyErrorMessage(requestError, 'Unable to load absence tickets right now.'))
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
 
   useEffect(() => {
-    void loadTickets()
+    const controller = new AbortController()
+    void loadTickets(controller.signal)
+    return () => controller.abort()
   }, [])
 
   const submitTicket = async (attendanceId) => {

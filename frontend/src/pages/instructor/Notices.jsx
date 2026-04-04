@@ -11,6 +11,7 @@ import StatusBadge from '../../components/StatusBadge'
 import EmptyState from '../../components/EmptyState'
 import { useToast } from '../../components/Toast'
 import useForm from '../../hooks/useForm'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 const initialNoticeValues = { title: '', content: '', type: 'GENERAL', audience: 'STUDENTS', targetSemester: '' }
 
@@ -49,18 +50,25 @@ const InstructorNotices = () => {
   }
   const { values, errors, handleChange, handleSubmit, setValues, setErrors } = useForm(initialNoticeValues, validateNotice)
 
-  useEffect(() => { fetchNotices() }, [page])
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchNotices(controller.signal)
+    return () => controller.abort()
+  }, [page])
 
-  const fetchNotices = async () => {
+  const fetchNotices = async (signal) => {
     try {
       setLoading(true)
-      const res = await api.get(`/notices?page=${page}&limit=${limit}`)
+      const res = await api.get(`/notices?page=${page}&limit=${limit}`, { signal })
       setNotices(res.data.notices)
       setTotal(res.data.total)
     } catch (error) {
+      if (isRequestCanceled(error)) return
       logger.error(error)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
 

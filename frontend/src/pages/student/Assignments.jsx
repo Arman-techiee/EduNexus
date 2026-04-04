@@ -5,6 +5,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton'
 import PageHeader from '../../components/PageHeader'
 import { useToast } from '../../components/Toast'
 import api, { resolveFileUrl } from '../../utils/api'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 const StudentAssignments = () => {
   const [assignments, setAssignments] = useState([])
@@ -28,21 +29,26 @@ const StudentAssignments = () => {
   }
 
   useEffect(() => {
-    void fetchData()
+    const controller = new AbortController()
+    void fetchData(controller.signal)
+    return () => controller.abort()
   }, [])
 
-  const fetchData = async () => {
+  const fetchData = async (signal) => {
     try {
       const [assignmentsRes, submissionsRes] = await Promise.all([
-        api.get('/assignments'),
-        api.get('/assignments/my-submissions'),
+        api.get('/assignments', { signal }),
+        api.get('/assignments/my-submissions', { signal }),
       ])
       setAssignments(assignmentsRes.data.assignments)
       setSubmissions(submissionsRes.data.submissions)
     } catch (error) {
+      if (isRequestCanceled(error)) return
       logger.error('Failed to load student assignments', error)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
 

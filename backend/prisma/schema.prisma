@@ -525,6 +525,7 @@ model DeviceToken {
   token     String         @unique
   platform  DevicePlatform
   createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
   @@index([userId])
   @@index([platform])

@@ -6,6 +6,7 @@ import PageHeader from '../../components/PageHeader'
 import StatCard from '../../components/StatCard'
 import EmptyState from '../../components/EmptyState'
 import api from '../../utils/api'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 
 const initialsFromName = (name = '') =>
@@ -34,14 +35,16 @@ const Dashboard = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetchStats()
+    const controller = new AbortController()
+    void fetchStats(controller.signal)
+    return () => controller.abort()
   }, [])
 
-  const fetchStats = async () => {
+  const fetchStats = async (signal) => {
     try {
       const [statsRes, usersRes] = await Promise.all([
-        api.get('/admin/stats'),
-        api.get('/admin/users', { params: { page: 1, limit: 5 } })
+        api.get('/admin/stats', { signal }),
+        api.get('/admin/users', { params: { page: 1, limit: 5 }, signal })
       ])
 
       const users = usersRes.data.users || []
@@ -57,10 +60,13 @@ const Dashboard = () => {
       setRecentUsers(users)
 
     } catch (error) {
+      if (isRequestCanceled(error)) return
       logger.error(error)
       setError('Unable to load dashboard data')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
 

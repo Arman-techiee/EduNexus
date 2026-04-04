@@ -1,10 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getFriendlyErrorMessage } from '../utils/errors'
+import { isRequestCanceled } from '../utils/http'
 
 const useApi = ({ initialData = null, initialLoading = false } = {}) => {
   const [data, setData] = useState(initialData)
   const [loading, setLoading] = useState(initialLoading)
   const [error, setError] = useState('')
+  const mountedRef = useRef(true)
+
+  useEffect(() => () => {
+    mountedRef.current = false
+  }, [])
 
   const execute = async (request, options = {}) => {
     const {
@@ -15,14 +21,20 @@ const useApi = ({ initialData = null, initialLoading = false } = {}) => {
       transform
     } = options
 
-    setLoading(true)
-    if (clearError) {
-      setError('')
+    if (mountedRef.current) {
+      setLoading(true)
+      if (clearError) {
+        setError('')
+      }
     }
 
     try {
       const response = await request()
       const nextData = transform ? transform(response) : response?.data
+      if (!mountedRef.current) {
+        return response
+      }
+
       setData(nextData)
 
       if (onSuccess) {
@@ -31,8 +43,14 @@ const useApi = ({ initialData = null, initialLoading = false } = {}) => {
 
       return response
     } catch (requestError) {
+      if (isRequestCanceled(requestError)) {
+        return null
+      }
+
       const message = getFriendlyErrorMessage(requestError, fallbackMessage)
-      setError(message)
+      if (mountedRef.current) {
+        setError(message)
+      }
 
       if (onError) {
         onError(requestError, message)
@@ -40,7 +58,9 @@ const useApi = ({ initialData = null, initialLoading = false } = {}) => {
 
       throw requestError
     } finally {
-      setLoading(false)
+      if (mountedRef.current) {
+        setLoading(false)
+      }
     }
   }
 

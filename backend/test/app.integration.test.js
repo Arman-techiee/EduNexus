@@ -127,6 +127,153 @@ test('POST /api/v1/auth/login returns the controller response through the real r
   assert.equal(response.body.user.email, 'admin@example.com')
 })
 
+test('POST /api/v1/auth/login returns 401 for a wrong password through the real route', async () => {
+  const authRoutes = loadWithMocks(resolveFromTest('src', 'routes', 'auth.routes.js'), {
+    '../controllers/auth.controller': {
+      register: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      submitStudentIntake: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      login: async (_req, res) => res.status(401).json({ message: 'Invalid credentials' }),
+      refresh: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      logout: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMe: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getStudentIdQr: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      updateProfile: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      uploadAvatar: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      changePassword: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      completeProfile: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      forgotPassword: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      resetPassword: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getActivity: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      logoutAll: async (_req, res) => res.status(501).json({ message: 'unused' })
+    },
+    '../middleware/auth.middleware': {
+      protect: (_req, _res, next) => next(),
+      allowRoles: () => (_req, _res, next) => next()
+    },
+    '../middleware/rateLimit.middleware': {
+      authLimiter: (_req, _res, next) => next()
+    },
+    '../middleware/upload.middleware': {
+      uploadImage: {
+        single: () => (_req, _res, next) => next()
+      },
+      validateUploadedImage: (_req, _res, next) => next()
+    }
+  })
+
+  const testApp = express()
+  testApp.use(express.json())
+  testApp.use('/api/v1/auth', authRoutes)
+
+  const response = await request(testApp)
+    .post('/api/v1/auth/login')
+    .send({
+      email: 'admin@example.com',
+      password: 'wrong-password'
+    })
+
+  assert.equal(response.status, 401)
+  assert.deepEqual(response.body, { message: 'Invalid credentials' })
+})
+
+test('POST /api/v1/auth/refresh returns a new token when the refresh cookie is valid', async () => {
+  const authRoutes = loadWithMocks(resolveFromTest('src', 'routes', 'auth.routes.js'), {
+    '../controllers/auth.controller': {
+      register: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      submitStudentIntake: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      login: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      refresh: async (_req, res) => res.status(200).json({
+        message: 'Token refreshed successfully',
+        token: 'new-access-token',
+        user: {
+          id: 'student-1',
+          role: 'STUDENT'
+        }
+      }),
+      logout: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMe: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getStudentIdQr: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      updateProfile: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      uploadAvatar: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      changePassword: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      completeProfile: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      forgotPassword: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      resetPassword: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getActivity: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      logoutAll: async (_req, res) => res.status(501).json({ message: 'unused' })
+    },
+    '../middleware/auth.middleware': {
+      protect: (_req, _res, next) => next(),
+      allowRoles: () => (_req, _res, next) => next()
+    },
+    '../middleware/rateLimit.middleware': {
+      authLimiter: (_req, _res, next) => next()
+    },
+    '../middleware/upload.middleware': {
+      uploadImage: {
+        single: () => (_req, _res, next) => next()
+      },
+      validateUploadedImage: (_req, _res, next) => next()
+    }
+  })
+
+  const testApp = express()
+  testApp.use(express.json())
+  testApp.use('/api/v1/auth', authRoutes)
+
+  const response = await request(testApp)
+    .post('/api/v1/auth/refresh')
+    .set('Cookie', ['refreshToken=valid-refresh-token'])
+
+  assert.equal(response.status, 200)
+  assert.equal(response.body.token, 'new-access-token')
+})
+
+test('POST /api/v1/auth/refresh returns 401 when the refresh cookie is missing', async () => {
+  const authRoutes = loadWithMocks(resolveFromTest('src', 'routes', 'auth.routes.js'), {
+    '../controllers/auth.controller': {
+      register: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      submitStudentIntake: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      login: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      refresh: async (_req, res) => res.status(401).json({ message: 'Refresh token is required' }),
+      logout: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMe: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getStudentIdQr: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      updateProfile: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      uploadAvatar: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      changePassword: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      completeProfile: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      forgotPassword: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      resetPassword: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getActivity: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      logoutAll: async (_req, res) => res.status(501).json({ message: 'unused' })
+    },
+    '../middleware/auth.middleware': {
+      protect: (_req, _res, next) => next(),
+      allowRoles: () => (_req, _res, next) => next()
+    },
+    '../middleware/rateLimit.middleware': {
+      authLimiter: (_req, _res, next) => next()
+    },
+    '../middleware/upload.middleware': {
+      uploadImage: {
+        single: () => (_req, _res, next) => next()
+      },
+      validateUploadedImage: (_req, _res, next) => next()
+    }
+  })
+
+  const testApp = express()
+  testApp.use(express.json())
+  testApp.use('/api/v1/auth', authRoutes)
+
+  const response = await request(testApp)
+    .post('/api/v1/auth/refresh')
+
+  assert.equal(response.status, 401)
+  assert.deepEqual(response.body, { message: 'Refresh token is required' })
+})
+
 test('GET /api/v1/admin/stats denies instructors through the real admin route', async () => {
   let statsCalled = false
 
@@ -188,4 +335,107 @@ test('GET /api/v1/admin/stats denies instructors through the real admin route', 
     message: 'Access denied. Only ADMIN can do this.'
   })
   assert.equal(statsCalled, false)
+})
+
+test('GET /api/v1/marks/my returns student marks through the real route', async () => {
+  let marksCalled = false
+
+  const marksRoutes = loadWithMocks(resolveFromTest('src', 'routes', 'marks.routes.js'), {
+    '../controllers/marks.controller': {
+      addMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      updateMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMarksBySubject: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMarksReview: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getEnrolledStudentsBySubject: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMyMarks: async (_req, res) => {
+        marksCalled = true
+        res.json({ marks: [{ id: 'mark-1' }], total: 1 })
+      },
+      getMyMarksSummary: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      exportMyMarksheetPdf: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      deleteMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      publishMarks: async (_req, res) => res.status(501).json({ message: 'unused' })
+    },
+    '../middleware/auth.middleware': {
+      protect: (req, _res, next) => {
+        req.user = { id: 'user-student-1', role: 'STUDENT' }
+        next()
+      },
+      allowRoles: (...roles) => (req, res, next) => (
+        roles.includes(req.user.role)
+          ? next()
+          : res.status(403).json({ message: `Access denied. Only ${roles.join(', ')} can do this.` })
+      )
+    },
+    '../middleware/profile.middleware': {
+      attachActorProfiles: (req, _res, next) => {
+        req.student = { id: 'student-1' }
+        next()
+      }
+    },
+    '../middleware/validate.middleware': {
+      validate: () => (_req, _res, next) => next()
+    }
+  })
+
+  const testApp = express()
+  testApp.use(express.json())
+  testApp.use('/api/v1/marks', marksRoutes)
+
+  const response = await request(testApp).get('/api/v1/marks/my')
+
+  assert.equal(response.status, 200)
+  assert.equal(marksCalled, true)
+  assert.equal(response.body.total, 1)
+})
+
+test('GET /api/v1/marks/my denies instructors through the real route', async () => {
+  let marksCalled = false
+
+  const marksRoutes = loadWithMocks(resolveFromTest('src', 'routes', 'marks.routes.js'), {
+    '../controllers/marks.controller': {
+      addMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      updateMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMarksBySubject: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMarksReview: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getEnrolledStudentsBySubject: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMyMarks: async (_req, res) => {
+        marksCalled = true
+        res.json({ marks: [] })
+      },
+      getMyMarksSummary: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      exportMyMarksheetPdf: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      deleteMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      publishMarks: async (_req, res) => res.status(501).json({ message: 'unused' })
+    },
+    '../middleware/auth.middleware': {
+      protect: (req, _res, next) => {
+        req.user = { id: 'user-instructor-1', role: 'INSTRUCTOR' }
+        next()
+      },
+      allowRoles: (...roles) => (req, res, next) => (
+        roles.includes(req.user.role)
+          ? next()
+          : res.status(403).json({ message: `Access denied. Only ${roles.join(', ')} can do this.` })
+      )
+    },
+    '../middleware/profile.middleware': {
+      attachActorProfiles: (_req, _res, next) => next()
+    },
+    '../middleware/validate.middleware': {
+      validate: () => (_req, _res, next) => next()
+    }
+  })
+
+  const testApp = express()
+  testApp.use(express.json())
+  testApp.use('/api/v1/marks', marksRoutes)
+
+  const response = await request(testApp).get('/api/v1/marks/my')
+
+  assert.equal(response.status, 403)
+  assert.equal(marksCalled, false)
+  assert.deepEqual(response.body, {
+    message: 'Access denied. Only STUDENT can do this.'
+  })
 })

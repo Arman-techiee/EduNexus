@@ -22,6 +22,8 @@ const loadPushTargets = async (userIds = []) => {
 }
 
 const dispatchPushNotifications = async ({ userIds }) => {
+  if (!process.env.FCM_SERVER_KEY) return { count: 0 }
+
   // Mobile groundwork: persist device tokens now and centralize the future
   // FCM fan-out hook here after database notifications are saved.
   const pushTargets = await loadPushTargets(userIds)

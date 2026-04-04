@@ -3,6 +3,7 @@ import { BookOpenText, ClipboardList, Files, GraduationCap } from 'lucide-react'
 import StudentLayout from '../../layouts/StudentLayout'
 import PageHeader from '../../components/PageHeader'
 import api from '../../utils/api'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 
 const initialsFromName = (name = '') =>
@@ -24,19 +25,24 @@ const StudentSubjects = () => {
   const [subjects, setSubjects] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const fetchSubjects = useCallback(async () => {
+  const fetchSubjects = useCallback(async (signal) => {
     try {
-      const res = await api.get('/subjects')
+      const res = await api.get('/subjects', { signal })
       setSubjects(res.data.subjects)
     } catch (error) {
+      if (isRequestCanceled(error)) return
       logger.error('Failed to load student subjects', error)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => {
-    void fetchSubjects()
+    const controller = new AbortController()
+    void fetchSubjects(controller.signal)
+    return () => controller.abort()
   }, [fetchSubjects])
 
   return (

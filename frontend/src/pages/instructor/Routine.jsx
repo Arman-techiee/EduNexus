@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import InstructorLayout from '../../layouts/InstructorLayout'
 import PageHeader from '../../components/PageHeader'
 import api from '../../utils/api'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
 const DAY_SHORT = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun' }
@@ -28,19 +29,24 @@ const InstructorRoutine = () => {
   const [loading, setLoading] = useState(true)
   const [activeDay, setActiveDay] = useState(todayName())
 
-  const fetchRoutines = useCallback(async () => {
+  const fetchRoutines = useCallback(async (signal) => {
     try {
-      const res = await api.get('/routines')
+      const res = await api.get('/routines', { signal })
       setRoutines(res.data.routines)
     } catch (err) {
+      if (isRequestCanceled(err)) return
       logger.error('Failed to load instructor routine', err)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => {
-    void fetchRoutines()
+    const controller = new AbortController()
+    void fetchRoutines(controller.signal)
+    return () => controller.abort()
   }, [fetchRoutines])
 
   const byDay = DAYS.reduce((acc, day) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import StudentLayout from '../../layouts/StudentLayout'
 import api from '../../utils/api'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -6,6 +6,7 @@ import PageHeader from '../../components/PageHeader'
 import Pagination from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
 import EmptyState from '../../components/EmptyState'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 
 const noticeToneClasses = {
@@ -59,22 +60,28 @@ const StudentNotices = () => {
   const [loading, setLoading] = useState(true)
   const [expandedNoticeIds, setExpandedNoticeIds] = useState([])
 
-  const fetchNotices = useCallback(async () => {
-    try {
-      setLoading(true)
-      const res = await api.get(`/notices?page=${page}&limit=${limit}`)
-      setNotices(res.data.notices)
-      setTotal(res.data.total)
-    } catch (error) {
-      logger.error('Failed to load student notices', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [limit, page])
-
   useEffect(() => {
+    const controller = new AbortController()
+
+    const fetchNotices = async () => {
+      try {
+        setLoading(true)
+        const res = await api.get(`/notices?page=${page}&limit=${limit}`, { signal: controller.signal })
+        setNotices(res.data.notices)
+        setTotal(res.data.total)
+      } catch (error) {
+        if (isRequestCanceled(error)) return
+        logger.error('Failed to load student notices', error)
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      }
+    }
+
     void fetchNotices()
-  }, [fetchNotices])
+    return () => controller.abort()
+  }, [limit, page])
 
   const toggleExpanded = (noticeId) => {
     setExpandedNoticeIds((current) => (

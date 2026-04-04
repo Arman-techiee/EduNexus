@@ -10,6 +10,7 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../utils/api'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+import { isRequestCanceled } from '../../utils/http'
 
 const statusToneMap = {
   APPROVED: 'ui-status-success',
@@ -33,11 +34,11 @@ const InstructorRequests = () => {
 
   const roleLabel = user?.role === 'COORDINATOR' ? 'department' : 'class'
 
-  const loadTickets = async () => {
+  const loadTickets = async (signal) => {
     try {
       setLoading(true)
       setError('')
-      const response = await api.get('/attendance/tickets')
+      const response = await api.get('/attendance/tickets', { signal })
       const nextTickets = response.data.tickets || []
       setTickets(nextTickets)
       setDrafts((current) => {
@@ -50,14 +51,19 @@ const InstructorRequests = () => {
         return nextDrafts
       })
     } catch (requestError) {
+      if (isRequestCanceled(requestError)) return
       setError(getFriendlyErrorMessage(requestError, 'Unable to load requests right now.'))
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
 
   useEffect(() => {
-    void loadTickets()
+    const controller = new AbortController()
+    void loadTickets(controller.signal)
+    return () => controller.abort()
   }, [])
 
   const filteredTickets = useMemo(() => (

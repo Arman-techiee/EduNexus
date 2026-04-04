@@ -10,15 +10,11 @@ const attachActorProfiles = async (req, _res, next) => {
       req.instructor = await prisma.instructor.findUnique({
         where: { userId: req.user.id }
       })
-    }
-
-    if (req.user.role === 'STUDENT') {
+    } else if (req.user.role === 'STUDENT') {
       req.student = await prisma.student.findUnique({
         where: { userId: req.user.id }
       })
-    }
-
-    if (req.user.role === 'COORDINATOR') {
+    } else if (req.user.role === 'COORDINATOR') {
       req.coordinator = await prisma.coordinator.findUnique({
         where: { userId: req.user.id }
       })

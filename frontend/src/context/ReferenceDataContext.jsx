@@ -9,7 +9,7 @@ export const ReferenceDataProvider = ({ children }) => {
   const subjectRequestRef = useRef(null)
   const departmentRequestRef = useRef(null)
 
-  const loadSubjects = useCallback(async ({ force = false } = {}) => {
+  const loadSubjects = useCallback(async ({ force = false, signal } = {}) => {
     if (!force && subjects.length > 0) {
       return subjects
     }
@@ -18,8 +18,12 @@ export const ReferenceDataProvider = ({ children }) => {
       return subjectRequestRef.current
     }
 
-    subjectRequestRef.current = api.get('/subjects')
+    subjectRequestRef.current = api.get('/subjects', { signal })
       .then((response) => {
+        if (signal?.aborted) {
+          return subjects
+        }
+
         const nextSubjects = response.data.subjects || []
         setSubjects(nextSubjects)
         return nextSubjects
@@ -31,7 +35,7 @@ export const ReferenceDataProvider = ({ children }) => {
     return subjectRequestRef.current
   }, [subjects])
 
-  const loadDepartments = useCallback(async ({ force = false } = {}) => {
+  const loadDepartments = useCallback(async ({ force = false, signal } = {}) => {
     if (!force && departments.length > 0) {
       return departments
     }
@@ -40,8 +44,12 @@ export const ReferenceDataProvider = ({ children }) => {
       return departmentRequestRef.current
     }
 
-    departmentRequestRef.current = api.get('/departments')
+    departmentRequestRef.current = api.get('/departments', { signal })
       .then((response) => {
+        if (signal?.aborted) {
+          return departments
+        }
+
         const nextDepartments = response.data.departments || []
         setDepartments(nextDepartments)
         return nextDepartments

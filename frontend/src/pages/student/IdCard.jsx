@@ -6,6 +6,7 @@ import LoadingSpinner from '../../components/LoadingSpinner'
 import PageHeader from '../../components/PageHeader'
 import api, { resolveFileUrl } from '../../utils/api'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+import { isRequestCanceled } from '../../utils/http'
 
 const StudentIdCard = () => {
   const [profile, setProfile] = useState(null)
@@ -15,23 +16,29 @@ const StudentIdCard = () => {
   const avatarUrl = resolveFileUrl(profile?.avatar)
 
   useEffect(() => {
+    const controller = new AbortController()
+
     const fetchCardData = async () => {
       try {
         setLoading(true)
         const [profileRes, qrRes] = await Promise.all([
-          api.get('/auth/me'),
-          api.get('/auth/student-id-qr')
+          api.get('/auth/me', { signal: controller.signal }),
+          api.get('/auth/student-id-qr', { signal: controller.signal })
         ])
         setProfile(profileRes.data.user)
         setStudentQrCode(qrRes.data.qrCode || '')
       } catch (requestError) {
+        if (isRequestCanceled(requestError)) return
         setError(getFriendlyErrorMessage(requestError, 'Unable to load the student ID card right now.'))
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
     void fetchCardData()
+    return () => controller.abort()
   }, [])
 
   return (

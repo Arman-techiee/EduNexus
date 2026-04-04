@@ -8,6 +8,7 @@ CREATE TABLE "DeviceToken" (
     "token" TEXT NOT NULL,
     "platform" "DevicePlatform" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "DeviceToken_pkey" PRIMARY KEY ("id")
 );
