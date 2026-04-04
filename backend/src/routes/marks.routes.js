@@ -6,6 +6,7 @@ const { validate } = require('../middleware/validate.middleware')
 const { schemas } = require('../validators/schemas')
 const {
   addMarks,
+  addMarksBulk,
   updateMarks,
   getMarksBySubject,
   getMarksReview,
@@ -22,6 +23,7 @@ router.use(attachActorProfiles)
 
 // Instructor routes
 router.post('/', allowRoles('INSTRUCTOR'), validate(schemas.marks.create), addMarks)
+router.post('/bulk', allowRoles('INSTRUCTOR'), validate(schemas.marks.bulkCreate), addMarksBulk)
 router.put('/:id', allowRoles('INSTRUCTOR'), validate(schemas.marks.update), updateMarks)
 router.post('/publish', allowRoles('COORDINATOR'), validate(schemas.marksPublication.publish), publishMarks)
 router.get('/review', allowRoles('COORDINATOR'), validate(schemas.marks.review), getMarksReview)

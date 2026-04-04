@@ -6,7 +6,7 @@ import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import api from '../../utils/api'
 import Alert from '../../components/Alert'
 import EmptyState from '../../components/EmptyState'
-import LoadingSpinner from '../../components/LoadingSpinner'
+import LoadingSkeleton from '../../components/LoadingSkeleton'
 import Modal from '../../components/Modal'
 import PageHeader from '../../components/PageHeader'
 import Pagination from '../../components/Pagination'
@@ -14,6 +14,7 @@ import { useToast } from '../../components/Toast'
 import { useReferenceData } from '../../context/ReferenceDataContext'
 import { useAuth } from '../../context/AuthContext'
 import logger from '../../utils/logger'
+import { isRequestCanceled } from '../../utils/http'
 
 const examTypes = ['INTERNAL', 'MIDTERM', 'FINAL', 'PREBOARD', 'PRACTICAL']
 
@@ -56,27 +57,30 @@ const Marks = () => {
   const [error, setError] = useState('')
   const { showToast } = useToast()
 
-  const fetchStudents = useCallback(async (subjectId) => {
+  const fetchStudents = useCallback(async (subjectId, signal) => {
     if (!subjectId) {
       setStudents([])
       return
     }
 
     try {
-      const res = await api.get(`/marks/subject/${subjectId}/students`)
+      const res = await api.get(`/marks/subject/${subjectId}/students`, { signal })
       setStudents(res.data.students)
     } catch (fetchError) {
+      if (isRequestCanceled(fetchError)) return
       logger.error('Failed to load subject students', fetchError)
       setStudents([])
     }
   }, [])
 
-  const fetchMarks = useCallback(async () => {
+  const fetchMarks = useCallback(async (signal) => {
     try {
       setLoading(true)
+      setError('')
 
       if (isCoordinator) {
         const res = await api.get('/marks/review', {
+          signal,
           params: {
             page,
             limit,
@@ -98,6 +102,7 @@ const Marks = () => {
       }
 
       const res = await api.get(`/marks/subject/${selectedSubject}`, {
+        signal,
         params: {
           page,
           limit,
@@ -108,9 +113,13 @@ const Marks = () => {
       setTotal(res.data.total || 0)
       setStats(res.data.stats || { total: 0, published: 0, unpublished: 0, byExamType: [] })
     } catch (fetchError) {
+      if (isRequestCanceled(fetchError)) return
       logger.error('Failed to load marks', fetchError)
+      setError(fetchError.response?.data?.message || 'Unable to load marks right now')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [isCoordinator, limit, page, selectedExamType, selectedSubject])
 
@@ -121,18 +130,22 @@ const Marks = () => {
   }, [loadSubjects])
 
   useEffect(() => {
-    void fetchMarks()
+    const controller = new AbortController()
+    void fetchMarks(controller.signal)
+    return () => controller.abort()
   }, [fetchMarks])
 
   useEffect(() => {
     if (!showModal || isCoordinator) return
 
+    const controller = new AbortController()
     if (form.subjectId) {
-      void fetchStudents(form.subjectId)
-      return
+      void fetchStudents(form.subjectId, controller.signal)
+    } else {
+      setStudents([])
     }
 
-    setStudents([])
+    return () => controller.abort()
   }, [fetchStudents, form.subjectId, isCoordinator, showModal])
 
   const handleSubmit = async (event) => {
@@ -157,14 +170,16 @@ const Marks = () => {
         return
       }
 
-      await Promise.all(entries.map((entry) => api.post('/marks', {
-        studentId: entry.studentId,
+      await api.post('/marks/bulk', {
         subjectId: form.subjectId,
         examType: form.examType,
         totalMarks: parseInt(form.totalMarks, 10),
-        obtainedMarks: parseInt(entry.obtainedMarks, 10),
-        remarks: entry.remarks
-      })))
+        entries: entries.map((entry) => ({
+          studentId: entry.studentId,
+          obtainedMarks: parseInt(entry.obtainedMarks, 10),
+          remarks: entry.remarks
+        }))
+      })
 
       showToast({ title: `Exam marks added for ${entries.length} student${entries.length === 1 ? '' : 's'}.` })
       setShowModal(false)
@@ -329,7 +344,9 @@ const Marks = () => {
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             {loading ? (
-              <LoadingSpinner text="Loading examination results..." />
+              <div className="p-6">
+                <LoadingSkeleton rows={5} itemClassName="h-20" />
+              </div>
             ) : (
               <>
                 <div className="flex items-center justify-between px-6 py-4 border-b bg-slate-50">

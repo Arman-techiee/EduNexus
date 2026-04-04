@@ -5,7 +5,7 @@ import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import api from '../../utils/api'
 import Alert from '../../components/Alert'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import LoadingSpinner from '../../components/LoadingSpinner'
+import LoadingSkeleton from '../../components/LoadingSkeleton'
 import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import PageHeader from '../../components/PageHeader'
@@ -17,6 +17,7 @@ import { useReferenceData } from '../../context/ReferenceDataContext'
 import useForm from '../../hooks/useForm'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import logger from '../../utils/logger'
+import { isRequestCanceled } from '../../utils/http'
 const initialNoticeValues = { title: '', content: '', type: 'GENERAL', audience: 'ALL', targetDepartment: '', targetSemester: '' }
 const noticeToneClasses = {
   URGENT: 'border-l-red-500',
@@ -95,10 +96,12 @@ const Notices = () => {
   }
   const { values, errors, handleChange, handleSubmit, setValues, setErrors } = useForm(initialNoticeValues, validateNotice)
 
-  const fetchNotices = useCallback(async () => {
+  const fetchNotices = useCallback(async (signal) => {
     try {
       setLoading(true)
+      setError('')
       const res = await api.get('/notices', {
+        signal,
         params: {
           page,
           limit,
@@ -108,14 +111,20 @@ const Notices = () => {
       setNotices(res.data.notices)
       setTotal(res.data.total)
     } catch (error) {
+      if (isRequestCanceled(error)) return
       logger.error('Failed to load admin notices', error)
+      setError(error.response?.data?.message || 'Unable to load notices right now.')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [debouncedSearchTerm, limit, page])
 
   useEffect(() => {
-    void fetchNotices()
+    const controller = new AbortController()
+    void fetchNotices(controller.signal)
+    return () => controller.abort()
   }, [fetchNotices])
 
   useEffect(() => {
@@ -229,7 +238,7 @@ const Notices = () => {
 
         {/* Notices List */}
         {loading ? (
-          <LoadingSpinner text="Loading notices..." />
+          <LoadingSkeleton rows={5} itemClassName="h-36" />
         ) : (
           <>
             <div className="space-y-4">

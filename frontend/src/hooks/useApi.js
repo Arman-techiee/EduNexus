@@ -7,9 +7,12 @@ const useApi = ({ initialData = null, initialLoading = false } = {}) => {
   const [loading, setLoading] = useState(initialLoading)
   const [error, setError] = useState('')
   const mountedRef = useRef(true)
+  const controllersRef = useRef(new Set())
 
   useEffect(() => () => {
     mountedRef.current = false
+    controllersRef.current.forEach((controller) => controller.abort())
+    controllersRef.current.clear()
   }, [])
 
   const execute = async (request, options = {}) => {
@@ -28,8 +31,11 @@ const useApi = ({ initialData = null, initialLoading = false } = {}) => {
       }
     }
 
+    const controller = new AbortController()
+    controllersRef.current.add(controller)
+
     try {
-      const response = await request()
+      const response = await request(controller.signal)
       const nextData = transform ? transform(response) : response?.data
       if (!mountedRef.current) {
         return response
@@ -58,6 +64,7 @@ const useApi = ({ initialData = null, initialLoading = false } = {}) => {
 
       throw requestError
     } finally {
+      controllersRef.current.delete(controller)
       if (mountedRef.current) {
         setLoading(false)
       }

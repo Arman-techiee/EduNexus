@@ -343,6 +343,7 @@ test('GET /api/v1/marks/my returns student marks through the real route', async 
   const marksRoutes = loadWithMocks(resolveFromTest('src', 'routes', 'marks.routes.js'), {
     '../controllers/marks.controller': {
       addMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      addMarksBulk: async (_req, res) => res.status(501).json({ message: 'unused' }),
       updateMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
       getMarksBySubject: async (_req, res) => res.status(501).json({ message: 'unused' }),
       getMarksReview: async (_req, res) => res.status(501).json({ message: 'unused' }),
@@ -395,6 +396,7 @@ test('GET /api/v1/marks/my denies instructors through the real route', async () 
   const marksRoutes = loadWithMocks(resolveFromTest('src', 'routes', 'marks.routes.js'), {
     '../controllers/marks.controller': {
       addMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      addMarksBulk: async (_req, res) => res.status(501).json({ message: 'unused' }),
       updateMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
       getMarksBySubject: async (_req, res) => res.status(501).json({ message: 'unused' }),
       getMarksReview: async (_req, res) => res.status(501).json({ message: 'unused' }),
@@ -438,4 +440,67 @@ test('GET /api/v1/marks/my denies instructors through the real route', async () 
   assert.deepEqual(response.body, {
     message: 'Access denied. Only STUDENT can do this.'
   })
+})
+
+test('POST /api/v1/marks/bulk reaches the bulk marks controller for instructors', async () => {
+  let bulkCalled = false
+
+  const marksRoutes = loadWithMocks(resolveFromTest('src', 'routes', 'marks.routes.js'), {
+    '../controllers/marks.controller': {
+      addMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      addMarksBulk: async (_req, res) => {
+        bulkCalled = true
+        res.status(201).json({ count: 2 })
+      },
+      updateMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMarksBySubject: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMarksReview: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getEnrolledStudentsBySubject: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMyMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      getMyMarksSummary: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      exportMyMarksheetPdf: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      deleteMarks: async (_req, res) => res.status(501).json({ message: 'unused' }),
+      publishMarks: async (_req, res) => res.status(501).json({ message: 'unused' })
+    },
+    '../middleware/auth.middleware': {
+      protect: (req, _res, next) => {
+        req.user = { id: 'user-instructor-1', role: 'INSTRUCTOR' }
+        next()
+      },
+      allowRoles: (...roles) => (req, res, next) => (
+        roles.includes(req.user.role)
+          ? next()
+          : res.status(403).json({ message: `Access denied. Only ${roles.join(', ')} can do this.` })
+      )
+    },
+    '../middleware/profile.middleware': {
+      attachActorProfiles: (req, _res, next) => {
+        req.instructor = { id: 'instructor-1' }
+        next()
+      }
+    },
+    '../middleware/validate.middleware': {
+      validate: () => (_req, _res, next) => next()
+    }
+  })
+
+  const testApp = express()
+  testApp.use(express.json())
+  testApp.use('/api/v1/marks', marksRoutes)
+
+  const response = await request(testApp)
+    .post('/api/v1/marks/bulk')
+    .send({
+      subjectId: 'subject-1',
+      examType: 'MIDTERM',
+      totalMarks: 100,
+      entries: [
+        { studentId: 'student-1', obtainedMarks: 88, remarks: 'Good' },
+        { studentId: 'student-2', obtainedMarks: 76, remarks: '' }
+      ]
+    })
+
+  assert.equal(response.status, 201)
+  assert.equal(bulkCalled, true)
+  assert.equal(response.body.count, 2)
 })

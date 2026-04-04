@@ -6,7 +6,9 @@ import Pagination from '../../components/Pagination'
 import EmptyState from '../../components/EmptyState'
 import SimpleBarChart from '../../components/SimpleBarChart'
 import Alert from '../../components/Alert'
+import LoadingSkeleton from '../../components/LoadingSkeleton'
 import logger from '../../utils/logger'
+import { isRequestCanceled } from '../../utils/http'
 
 const examTypeLabels = {
   INTERNAL: 'Internal',
@@ -61,15 +63,12 @@ const StudentMarks = () => {
   const [downloadingMarksheet, setDownloadingMarksheet] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    void fetchMarks()
-  }, [page, selectedExamType])
-
-  const fetchMarks = async () => {
+  const fetchMarks = async (signal) => {
     try {
       setLoading(true)
       setError('')
       const res = await api.get('/marks/my', {
+        signal,
         params: {
           page,
           limit,
@@ -85,6 +84,7 @@ const StudentMarks = () => {
 
       if (effectiveExamType) {
         const summaryRes = await api.get('/marks/my/summary', {
+          signal,
           params: {
             examType: effectiveExamType
           }
@@ -102,13 +102,22 @@ const StudentMarks = () => {
         setSelectedExamType(res.data.examType)
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return
       logger.error(error)
       setSummary(emptySummary)
       setError(error.response?.data?.message || 'Unable to load marks right now')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchMarks(controller.signal)
+    return () => controller.abort()
+  }, [page, selectedExamType])
 
   const downloadMarksheet = async () => {
     try {
@@ -158,7 +167,7 @@ const StudentMarks = () => {
         <Alert type="error" message={error} />
 
         {loading ? (
-          <div className="py-8 text-center text-gray-500">Loading...</div>
+          <LoadingSkeleton rows={5} itemClassName="h-36" />
         ) : (
           <>
             <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">

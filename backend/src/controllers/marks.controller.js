@@ -531,6 +531,19 @@ const buildStaffReviewFilters = ({ req, subjectId, examType }) => {
   return where
 }
 
+const createMarkPayload = ({ studentId, subjectId, instructorId, examType, totalMarks, obtainedMarks, remarks }) => ({
+  studentId,
+  subjectId,
+  instructorId,
+  examType,
+  totalMarks,
+  obtainedMarks,
+  remarks,
+  isPublished: false,
+  publishedAt: null,
+  publishedBy: null
+})
+
 const addMarks = async (req, res) => {
   try {
     const { studentId, subjectId, examType, totalMarks, obtainedMarks, remarks } = req.body
@@ -562,18 +575,15 @@ const addMarks = async (req, res) => {
 
     try {
       mark = await prisma.mark.create({
-        data: {
+        data: createMarkPayload({
           studentId,
           subjectId,
           instructorId,
           examType,
           totalMarks,
           obtainedMarks,
-          remarks,
-          isPublished: false,
-          publishedAt: null,
-          publishedBy: null
-        },
+          remarks
+        }),
         include: {
           student: { include: { user: { select: { name: true } } } },
           subject: { select: { name: true, code: true } }
@@ -598,6 +608,105 @@ const addMarks = async (req, res) => {
       metadata: { subjectId, studentId, examType }
     })
   } catch (error) {
+    res.internalError(error)
+  }
+}
+
+const addMarksBulk = async (req, res) => {
+  try {
+    const { subjectId, examType, totalMarks, entries } = req.body
+
+    const access = await getManagedSubject(subjectId, req)
+    if (access.error) {
+      return res.status(access.error.status).json({ message: access.error.message })
+    }
+
+    const instructorId = access.instructor?.id || access.subject.instructorId
+    if (!instructorId) {
+      return res.status(400).json({ message: 'Assign an instructor to this subject before managing marks' })
+    }
+
+    const uniqueStudentIds = [...new Set(entries.map((entry) => entry.studentId))]
+    if (uniqueStudentIds.length !== entries.length) {
+      return res.status(400).json({ message: 'Each student can only appear once in a bulk marks request' })
+    }
+
+    const [enrollments, existingMarks] = await Promise.all([
+      prisma.subjectEnrollment.findMany({
+        where: {
+          subjectId,
+          studentId: { in: uniqueStudentIds }
+        },
+        select: { studentId: true }
+      }),
+      prisma.mark.findMany({
+        where: {
+          subjectId,
+          examType,
+          studentId: { in: uniqueStudentIds }
+        },
+        select: { studentId: true }
+      })
+    ])
+
+    const enrolledStudentIds = new Set(enrollments.map((enrollment) => enrollment.studentId))
+    const existingStudentIds = new Set(existingMarks.map((mark) => mark.studentId))
+
+    const notEnrolledIds = uniqueStudentIds.filter((studentId) => !enrolledStudentIds.has(studentId))
+    if (notEnrolledIds.length > 0) {
+      return res.status(400).json({
+        message: 'Some selected students are not enrolled in this subject',
+        studentIds: notEnrolledIds
+      })
+    }
+
+    const duplicateMarkIds = uniqueStudentIds.filter((studentId) => existingStudentIds.has(studentId))
+    if (duplicateMarkIds.length > 0) {
+      return res.status(400).json({
+        message: 'Marks already exist for some students in this exam type',
+        studentIds: duplicateMarkIds
+      })
+    }
+
+    const createdMarks = await prisma.$transaction(entries.map((entry) => (
+      prisma.mark.create({
+        data: createMarkPayload({
+          studentId: entry.studentId,
+          subjectId,
+          instructorId,
+          examType,
+          totalMarks,
+          obtainedMarks: entry.obtainedMarks,
+          remarks: entry.remarks
+        }),
+        include: {
+          student: { include: { user: { select: { name: true } } } },
+          subject: { select: { name: true, code: true } }
+        }
+      })
+    )))
+
+    res.status(201).json({
+      message: `Marks added successfully for ${createdMarks.length} student${createdMarks.length === 1 ? '' : 's'}!`,
+      marks: createdMarks.map(decorateMark),
+      count: createdMarks.length
+    })
+
+    await Promise.all(createdMarks.map((mark) => (
+      recordAuditLog({
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        action: 'MARK_CREATED',
+        entityType: 'Mark',
+        entityId: mark.id,
+        metadata: { subjectId, studentId: mark.studentId, examType, bulk: true }
+      })
+    )))
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ message: 'One or more marks already exist for this exam type' })
+    }
+
     res.internalError(error)
   }
 }
@@ -973,6 +1082,7 @@ const publishMarks = async (req, res) => {
 
 module.exports = {
   addMarks,
+  addMarksBulk,
   updateMarks,
   getMarksBySubject,
   getMarksReview,

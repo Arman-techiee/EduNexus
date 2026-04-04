@@ -6,7 +6,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import PageHeader from '../../components/PageHeader'
 import InstructorLayout from '../../layouts/InstructorLayout'
 import CoordinatorLayout from '../../layouts/CoordinatorLayout'
-import LoadingSpinner from '../../components/LoadingSpinner'
+import LoadingSkeleton from '../../components/LoadingSkeleton'
 import Modal from '../../components/Modal'
 import EmptyState from '../../components/EmptyState'
 import { useToast } from '../../components/Toast'
@@ -46,7 +46,7 @@ const InstructorMaterials = () => {
 
   const fetchMaterials = async () => {
     await executeMaterials(
-      () => api.get('/materials'),
+      (signal) => api.get('/materials', { signal }),
       {
         fallbackMessage: 'Unable to load materials',
         transform: (response) => response.data.materials
@@ -56,7 +56,7 @@ const InstructorMaterials = () => {
 
   const fetchSubjects = async () => {
     await executeSubjects(
-      () => api.get('/subjects'),
+      (signal) => api.get('/subjects', { signal }),
       {
         transform: (response) => response.data.subjects
       }
@@ -195,7 +195,7 @@ const InstructorMaterials = () => {
 
         {/* Materials Grid */}
         {loading ? (
-          <LoadingSpinner text="Loading materials..." />
+          <LoadingSkeleton rows={6} itemClassName="h-56" />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((mat) => (

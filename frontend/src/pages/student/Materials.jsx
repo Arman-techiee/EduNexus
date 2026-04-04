@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import LoadingSpinner from '../../components/LoadingSpinner'
+import LoadingSkeleton from '../../components/LoadingSkeleton'
 import EmptyState from '../../components/EmptyState'
 import PageHeader from '../../components/PageHeader'
 import StudentLayout from '../../layouts/StudentLayout'
@@ -23,7 +23,7 @@ const StudentMaterials = () => {
 
   async function fetchMaterials() {
     await executeMaterials(
-      () => api.get('/materials'),
+      (signal) => api.get('/materials', { signal }),
       {
         transform: (response) => response.data.materials
       }
@@ -32,7 +32,7 @@ const StudentMaterials = () => {
 
   async function fetchSubjects() {
     await executeSubjects(
-      () => api.get('/subjects'),
+      (signal) => api.get('/subjects', { signal }),
       {
         transform: (response) => response.data.subjects
       }
@@ -122,7 +122,7 @@ const StudentMaterials = () => {
         </div>
 
         {loading ? (
-          <LoadingSpinner text="Loading materials..." />
+          <LoadingSkeleton rows={6} itemClassName="h-56" />
         ) : (
           <>
             {/* Stats */}

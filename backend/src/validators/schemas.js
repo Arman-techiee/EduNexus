@@ -208,6 +208,41 @@ const marksBody = z.object({
   message: 'Obtained marks cannot exceed total marks'
 })
 
+const marksBulkEntryBody = z.object({
+  studentId: z.string().uuid(),
+  obtainedMarks: z.coerce.number().int().min(0),
+  remarks: optionalString(500)
+})
+
+const marksBulkBody = z.object({
+  subjectId: z.string().uuid(),
+  examType: examTypeEnum,
+  totalMarks: z.coerce.number().int().positive(),
+  entries: z.array(marksBulkEntryBody).min(1).max(200)
+}).superRefine((data, context) => {
+  const seenStudentIds = new Set()
+
+  data.entries.forEach((entry, index) => {
+    if (entry.obtainedMarks > data.totalMarks) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['entries', index, 'obtainedMarks'],
+        message: 'Obtained marks cannot exceed total marks'
+      })
+    }
+
+    if (seenStudentIds.has(entry.studentId)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['entries', index, 'studentId'],
+        message: 'Duplicate student entry in bulk marks payload'
+      })
+    }
+
+    seenStudentIds.add(entry.studentId)
+  })
+})
+
 const updateMarksBody = z.object({
   obtainedMarks: z.coerce.number().int().min(0),
   remarks: optionalString(500)
@@ -454,6 +489,7 @@ const schemas = {
   },
   marks: {
     create: { body: marksBody },
+    bulkCreate: { body: marksBulkBody },
     update: { params: uuidParam, body: updateMarksBody },
     review: {
       query: z.object({
@@ -529,6 +565,13 @@ const schemas = {
     bySubject: { params: z.object({ subjectId: z.string().uuid() }) }
   },
   notifications: {
+    list: {
+      query: z.object({
+        page: z.coerce.number().int().min(1).optional(),
+        limit: z.coerce.number().int().min(1).max(50).optional(),
+        unreadOnly: z.enum(['true', 'false']).optional()
+      })
+    },
     registerDeviceToken: {
       body: z.object({
         token: z.string().trim().min(10).max(4096),

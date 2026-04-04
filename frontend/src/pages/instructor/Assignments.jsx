@@ -63,7 +63,8 @@ const Assignments = () => {
 
   const fetchAssignments = async () => {
     await executeAssignments(
-      () => api.get('/assignments', {
+      (signal) => api.get('/assignments', {
+        signal,
         params: selectedSubject ? { subjectId: selectedSubject } : undefined
       }),
       {
@@ -74,7 +75,7 @@ const Assignments = () => {
 
   const fetchSubjects = async () => {
     await executeSubjects(
-      () => api.get('/subjects'),
+      (signal) => api.get('/subjects', { signal }),
       {
         transform: (response) => response.data.subjects
       }

@@ -15,7 +15,7 @@ const {
 
 router.use(protect)
 
-router.get('/', listNotifications)
+router.get('/', validate(schemas.notifications.list), listNotifications)
 router.get('/unread-count', getUnreadNotificationCount)
 router.post('/device-token', authLimiter, validate(schemas.notifications.registerDeviceToken), registerDeviceToken)
 router.delete('/device-token', authLimiter, validate(schemas.notifications.unregisterDeviceToken), unregisterDeviceToken)

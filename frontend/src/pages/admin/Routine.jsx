@@ -3,11 +3,14 @@ import { Plus } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
 import CoordinatorLayout from '../../layouts/CoordinatorLayout'
 import api from '../../utils/api'
+import Alert from '../../components/Alert'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import LoadingSkeleton from '../../components/LoadingSkeleton'
 import Modal from '../../components/Modal'
 import PageHeader from '../../components/PageHeader'
 import { useAuth } from '../../context/AuthContext'
 import logger from '../../utils/logger'
+import { isRequestCanceled } from '../../utils/http'
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
 const DAY_SHORT = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun' }
 
@@ -50,35 +53,49 @@ const AdminRoutine = () => {
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
-    fetchRoutines()
-    fetchSubjects()
-    fetchInstructors()
+    const controller = new AbortController()
+    void Promise.all([
+      fetchRoutines(controller.signal),
+      fetchSubjects(controller.signal),
+      fetchInstructors(controller.signal)
+    ])
+    return () => controller.abort()
   }, [])
 
-  const fetchRoutines = async () => {
+  const fetchRoutines = async (signal) => {
     try {
       setLoading(true)
-      const res = await api.get('/routines')
+      const res = await api.get('/routines', { signal })
       setRoutines(res.data.routines)
     } catch (err) {
+      if (isRequestCanceled(err)) return
       logger.error(err)
+      setError(err.response?.data?.message || 'Unable to load routine entries right now.')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = async (signal) => {
     try {
-      const res = await api.get('/subjects')
+      const res = await api.get('/subjects', { signal })
       setSubjects(res.data.subjects)
-    } catch (err) { logger.error(err) }
+    } catch (err) {
+      if (isRequestCanceled(err)) return
+      logger.error(err)
+    }
   }
 
-  const fetchInstructors = async () => {
+  const fetchInstructors = async (signal) => {
     try {
-      const res = await api.get('/admin/users?role=INSTRUCTOR')
+      const res = await api.get('/admin/users?role=INSTRUCTOR', { signal })
       setInstructors(res.data.users)
-    } catch (err) { logger.error(err) }
+    } catch (err) {
+      if (isRequestCanceled(err)) return
+      logger.error(err)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -196,11 +213,11 @@ const AdminRoutine = () => {
           }]}
         />
 
-        {success && <div className="bg-green-50 text-green-600 px-4 py-3 rounded-lg mb-4 text-sm">{success}</div>}
-        {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
+        <Alert type="success" message={success} />
+        <Alert type="error" message={error} />
 
         {loading ? (
-          <div className="text-center text-gray-500 py-8">Loading...</div>
+          <LoadingSkeleton rows={4} itemClassName="h-40" />
         ) : (
           <>
             {/* Weekly Grid */}
@@ -298,7 +315,7 @@ const AdminRoutine = () => {
       {/* Modal */}
       {showModal && (
         <Modal title={editRoutine ? 'Edit Class' : 'Add Class'} onClose={() => setShowModal(false)}>
-            {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
+            <Alert type="error" message={error} />
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="ui-form-label">Department</label>

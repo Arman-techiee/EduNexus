@@ -3,6 +3,8 @@ const prisma = require('../utils/prisma')
 const listNotifications = async (req, res) => {
   try {
     const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 10, 1), 50)
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1)
+    const skip = (page - 1) * limit
     const unreadOnly = req.query.unreadOnly === 'true'
 
     const where = {
@@ -10,12 +12,14 @@ const listNotifications = async (req, res) => {
       ...(unreadOnly ? { isRead: false } : {})
     }
 
-    const [notifications, unreadCount] = await Promise.all([
+    const [notifications, total, unreadCount] = await Promise.all([
       prisma.notification.findMany({
         where,
         orderBy: { createdAt: 'desc' },
+        skip,
         take: limit
       }),
+      prisma.notification.count({ where }),
       prisma.notification.count({
         where: {
           userId: req.user.id,
@@ -24,7 +28,7 @@ const listNotifications = async (req, res) => {
       })
     ])
 
-    res.json({ notifications, unreadCount })
+    res.json({ notifications, unreadCount, total, page, limit })
   } catch (error) {
     res.internalError(error)
   }
