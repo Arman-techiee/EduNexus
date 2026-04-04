@@ -15,13 +15,13 @@ const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'
 const DAY_SHORT = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun' }
 
 const COLORS = [
-  'bg-blue-100 border-blue-300 text-blue-800',
-  'bg-green-100 border-green-300 text-green-800',
-  'bg-purple-100 border-purple-300 text-purple-800',
-  'bg-orange-100 border-orange-300 text-orange-800',
-  'bg-pink-100 border-pink-300 text-pink-800',
-  'bg-teal-100 border-teal-300 text-teal-800',
-  'bg-yellow-100 border-yellow-300 text-yellow-800',
+  'routine-tone-1',
+  'routine-tone-2',
+  'routine-tone-3',
+  'routine-tone-4',
+  'routine-tone-5',
+  'routine-tone-6',
+  'routine-tone-7',
 ]
 
 const defaultForm = {
@@ -225,7 +225,7 @@ const AdminRoutine = () => {
               {DAYS.map(day => (
                 <div key={day} className="min-h-[200px]">
                   {/* Day header */}
-                  <div className="bg-blue-600 text-white text-center py-2 rounded-t-xl text-sm font-semibold mb-2">
+                  <div className="ui-role-fill text-center py-2 rounded-t-xl text-sm font-semibold mb-2">
                     {DAY_SHORT[day]}
                   </div>
                   {/* Classes */}
@@ -242,14 +242,14 @@ const AdminRoutine = () => {
                         {r.room && <p className="text-xs opacity-75">🚪 {r.room}</p>}
                         <button
                           onClick={(e) => { e.stopPropagation(); setRoutineToDelete(r) }}
-                          className="text-xs text-red-500 hover:text-red-700 mt-1"
+                          className="status-absent mt-1 rounded px-1.5 py-0.5 text-xs"
                         >
                           ✕
                         </button>
                       </div>
                     ))}
                     {byDay[day].length === 0 && (
-                      <div className="text-center text-gray-300 text-xs py-4">—</div>
+                      <div className="text-center text-[var(--color-text-soft)] text-xs py-4">—</div>
                     )}
                   </div>
                 </div>
@@ -257,13 +257,13 @@ const AdminRoutine = () => {
             </div>
 
             {/* List view */}
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="p-4 border-b">
-                <h2 className="font-semibold text-gray-800">All Entries</h2>
+            <div className="ui-card rounded-2xl overflow-hidden">
+              <div className="border-b border-[var(--color-card-border)] p-4">
+                <h2 className="font-semibold text-[var(--color-heading)]">All Entries</h2>
               </div>
               <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr className="text-left text-sm text-gray-500">
+                <thead className="bg-[var(--color-surface-muted)]">
+                  <tr className="text-left text-sm text-[var(--color-text-muted)]">
                     <th className="px-6 py-3">Day</th>
                     <th className="px-6 py-3">Subject</th>
                     <th className="px-6 py-3">Academic</th>
@@ -275,27 +275,27 @@ const AdminRoutine = () => {
                 </thead>
                 <tbody>
                   {routines.map(r => (
-                    <tr key={r.id} className="border-t hover:bg-gray-50">
-                      <td className="px-6 py-3 text-sm font-medium text-gray-800">{DAY_SHORT[r.dayOfWeek]}</td>
+                    <tr key={r.id} className="border-t border-[var(--color-card-border)] hover:bg-[var(--color-surface-muted)]/70">
+                      <td className="px-6 py-3 text-sm font-medium text-[var(--color-heading)]">{DAY_SHORT[r.dayOfWeek]}</td>
                       <td className="px-6 py-3">
-                        <p className="text-sm font-medium text-gray-800">{r.subject?.name}</p>
-                        <p className="text-xs text-gray-400">{r.subject?.code}</p>
+                        <p className="text-sm font-medium text-[var(--color-heading)]">{r.subject?.name}</p>
+                        <p className="text-xs text-[var(--color-text-soft)]">{r.subject?.code}</p>
                       </td>
                       <td className="px-6 py-3">
-                        <p className="text-sm font-medium text-gray-800">{r.department || 'General'}</p>
-                        <p className="text-xs text-gray-400">Semester {r.semester}{r.section ? ` • Section ${r.section}` : ' • All sections'}</p>
+                        <p className="text-sm font-medium text-[var(--color-heading)]">{r.department || 'General'}</p>
+                        <p className="text-xs text-[var(--color-text-soft)]">Semester {r.semester}{r.section ? ` • Section ${r.section}` : ' • All sections'}</p>
                       </td>
-                      <td className="px-6 py-3 text-sm text-gray-600">{r.instructor?.user?.name}</td>
-                      <td className="px-6 py-3 text-sm text-gray-600">{r.startTime} – {r.endTime}</td>
-                      <td className="px-6 py-3 text-sm text-gray-500">{r.room || '—'}</td>
+                      <td className="px-6 py-3 text-sm text-[var(--color-text-muted)]">{r.instructor?.user?.name}</td>
+                      <td className="px-6 py-3 text-sm text-[var(--color-text-muted)]">{r.startTime} – {r.endTime}</td>
+                      <td className="px-6 py-3 text-sm text-[var(--color-text-muted)]">{r.room || '—'}</td>
                       <td className="px-6 py-3">
                         <div className="flex gap-2">
                           <button onClick={() => openEdit(r)}
-                            className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-lg hover:bg-blue-100">
+                            className="grade-merit rounded-lg px-3 py-1 text-xs border">
                             Edit
                           </button>
                           <button onClick={() => setRoutineToDelete(r)}
-                            className="text-xs bg-red-50 text-red-600 px-3 py-1 rounded-lg hover:bg-red-100">
+                            className="status-absent rounded-lg px-3 py-1 text-xs border">
                             Delete
                           </button>
                         </div>
@@ -303,7 +303,7 @@ const AdminRoutine = () => {
                     </tr>
                   ))}
                   {routines.length === 0 && (
-                    <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">No routines yet</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-8 text-center text-[var(--color-text-soft)]">No routines yet</td></tr>
                   )}
                 </tbody>
               </table>
@@ -363,7 +363,7 @@ const AdminRoutine = () => {
                   ))}
                 </select>
                 {form.department && filteredSubjects.length === 0 ? (
-                  <p className="mt-2 text-xs text-amber-600">No subjects match this department and semester yet.</p>
+                  <p className="status-late mt-2 inline-flex rounded-lg px-2 py-1 text-xs">No subjects match this department and semester yet.</p>
                 ) : null}
               </div>
               <div>
@@ -403,9 +403,9 @@ const AdminRoutine = () => {
               </div>
               <div className="ui-modal-footer">
                 <button type="button" onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
+                  className="flex-1 rounded-lg border border-[var(--color-card-border)] py-2 text-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">Cancel</button>
                 <button type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 font-medium">
+                  className="ui-role-fill flex-1 rounded-lg py-2 text-sm font-medium">
                   {editRoutine ? 'Update' : 'Add Class'}
                 </button>
               </div>

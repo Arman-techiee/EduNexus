@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useReferenceData } from '../../context/ReferenceDataContext'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 const Subjects = () => {
   const { user } = useAuth()
@@ -50,10 +51,11 @@ const Subjects = () => {
     })
   }, [loadDepartments])
 
-  const fetchSubjects = useCallback(async () => {
+  const fetchSubjects = useCallback(async (signal) => {
     try {
       setLoading(true)
       const res = await api.get('/subjects', {
+        signal,
         params: {
           page,
           limit,
@@ -63,27 +65,35 @@ const Subjects = () => {
       setSubjects(res.data.subjects || [])
       setTotal(res.data.total || 0)
     } catch (error) {
+      if (isRequestCanceled(error)) return
       logger.error('Failed to load subjects', error)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [debouncedSearchTerm, limit, page])
 
-  const fetchInstructors = useCallback(async () => {
+  const fetchInstructors = useCallback(async (signal) => {
     try {
-      const res = await api.get('/admin/users?role=INSTRUCTOR')
+      const res = await api.get('/admin/users?role=INSTRUCTOR', { signal })
       setInstructors(res.data.users)
     } catch (error) {
+      if (isRequestCanceled(error)) return
       logger.error('Failed to load instructors', error)
     }
   }, [])
 
   useEffect(() => {
-    void fetchInstructors()
+    const controller = new AbortController()
+    void fetchInstructors(controller.signal)
+    return () => controller.abort()
   }, [fetchInstructors])
 
   useEffect(() => {
-    void fetchSubjects()
+    const controller = new AbortController()
+    void fetchSubjects(controller.signal)
+    return () => controller.abort()
   }, [fetchSubjects])
 
   const handleSubmit = async (e) => {

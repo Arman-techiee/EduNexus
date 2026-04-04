@@ -18,6 +18,7 @@ import { useReferenceData } from '../../context/ReferenceDataContext'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import useForm from '../../hooks/useForm'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 const initialUserValues = {
   name: '',
@@ -99,7 +100,7 @@ const Users = () => {
     })
   }, [loadDepartments])
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (signal) => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -114,18 +115,23 @@ const Users = () => {
         params.set('search', debouncedSearchTerm.trim())
       }
 
-      const res = await api.get(`/admin/users?${params.toString()}`)
+      const res = await api.get(`/admin/users?${params.toString()}`, { signal })
       setUsers(res.data.users)
       setTotal(res.data.total)
     } catch (error) {
+      if (isRequestCanceled(error)) return
       logger.error(error)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [debouncedSearchTerm, filterRole, limit, page])
 
   useEffect(() => {
-    void fetchUsers()
+    const controller = new AbortController()
+    void fetchUsers(controller.signal)
+    return () => controller.abort()
   }, [fetchUsers])
 
   const handleCreateUser = async () => {

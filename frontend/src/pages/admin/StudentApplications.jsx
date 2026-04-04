@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useReferenceData } from '../../context/ReferenceDataContext'
 import api from '../../utils/api'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+import { isRequestCanceled } from '../../utils/http'
 
 const StudentApplications = () => {
   const { user } = useAuth()
@@ -43,23 +44,29 @@ const StudentApplications = () => {
     })
   }, [loadDepartments])
 
-  const fetchApplications = useCallback(async () => {
+  const fetchApplications = useCallback(async (signal) => {
     try {
       setLoading(true)
+      setError('')
       const params = new URLSearchParams({ page: String(page), limit: String(limit) })
       if (filterStatus) params.set('status', filterStatus)
-      const res = await api.get(`/admin/student-applications?${params.toString()}`)
+      const res = await api.get(`/admin/student-applications?${params.toString()}`, { signal })
       setApplications(res.data.applications)
       setTotal(res.data.total)
     } catch (requestError) {
+      if (isRequestCanceled(requestError)) return
       setError(getFriendlyErrorMessage(requestError, 'Unable to load student applications right now.'))
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [filterStatus, limit, page])
 
   useEffect(() => {
-    void fetchApplications()
+    const controller = new AbortController()
+    void fetchApplications(controller.signal)
+    return () => controller.abort()
   }, [fetchApplications])
 
   const openApplication = (application) => {
@@ -158,14 +165,14 @@ const StudentApplications = () => {
                 setFilterStatus(status)
                 setPage(1)
               }}
-              className={`rounded-lg px-4 py-2 text-sm font-medium ${filterStatus === status ? 'bg-blue-600 text-white' : 'border bg-white text-gray-600 hover:bg-gray-50'}`}
+              className={`rounded-lg px-4 py-2 text-sm font-medium ${filterStatus === status ? 'ui-role-fill' : 'ui-card text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]'}`}
             >
               {status || 'All'}
             </button>
           ))}
         </div>
 
-        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+        <div className="ui-card rounded-2xl overflow-hidden">
           {loading ? (
             <div className="p-6">
               <LoadingSkeleton rows={5} itemClassName="h-20" />
@@ -178,8 +185,8 @@ const StudentApplications = () => {
             <>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[980px]">
-                  <thead className="bg-gray-50">
-                    <tr className="text-left text-sm text-gray-500">
+                  <thead className="bg-[var(--color-surface-muted)]">
+                    <tr className="text-left text-sm text-[var(--color-text-muted)]">
                       <th className="px-6 py-4">Student</th>
                       <th className="px-6 py-4">Email</th>
                       <th className="px-6 py-4">Requested</th>
@@ -190,38 +197,38 @@ const StudentApplications = () => {
                   </thead>
                   <tbody>
                     {applications.map((application) => (
-                      <tr key={application.id} className="border-t hover:bg-gray-50">
+                      <tr key={application.id} className="border-t border-[var(--color-card-border)] hover:bg-[var(--color-surface-muted)]">
                         <td className="px-6 py-4">
-                          <p className="font-medium text-gray-800">{application.fullName}</p>
-                          <p className="mt-1 text-xs text-gray-500">{application.phone}</p>
+                          <p className="font-medium text-[var(--color-heading)]">{application.fullName}</p>
+                          <p className="mt-1 text-xs text-[var(--color-text-muted)]">{application.phone}</p>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{application.email}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">{application.email}</td>
+                        <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">
                           {application.preferredDepartment} · First Semester Intake
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{new Date(application.createdAt).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">{new Date(application.createdAt).toLocaleDateString()}</td>
                         <td className="px-6 py-4">
                           <span className={`rounded-full px-2 py-1 text-xs font-medium ${
                             application.status === 'CONVERTED'
-                              ? 'bg-green-100 text-green-700'
+                              ? 'status-present'
                               : application.status === 'REVIEWED'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-amber-100 text-amber-700'
+                                ? 'grade-merit'
+                                : 'status-late'
                           }`}>
                             {application.status}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
-                            <button type="button" onClick={() => openApplication(application)} className="rounded-lg bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100">
+                            <button type="button" onClick={() => openApplication(application)} className="grade-merit rounded-lg border px-3 py-1 text-xs font-medium">
                               View
                             </button>
                             {application.status === 'PENDING' ? (
-                              <button type="button" onClick={() => markReviewed(application.id)} className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100">
+                              <button type="button" onClick={() => markReviewed(application.id)} className="grade-merit rounded-lg border px-3 py-1 text-xs font-medium">
                                 Mark Reviewed
                               </button>
                             ) : null}
-                            <button type="button" onClick={() => setApplicationToDelete(application)} className="rounded-lg bg-red-50 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-100">
+                            <button type="button" onClick={() => setApplicationToDelete(application)} className="status-absent rounded-lg border px-3 py-1 text-xs font-medium">
                               Delete
                             </button>
                           </div>
@@ -239,28 +246,28 @@ const StudentApplications = () => {
 
       {selectedApplication ? (
         <Modal title="Student Application Details" onClose={() => setSelectedApplication(null)}>
-          <div className="space-y-4 text-sm text-gray-600">
-            <div className="rounded-xl bg-gray-50 p-4">
-              <p><span className="font-medium text-gray-800">Full Name:</span> {selectedApplication.fullName}</p>
-              <p><span className="font-medium text-gray-800">Email:</span> {selectedApplication.email}</p>
-              <p><span className="font-medium text-gray-800">Phone:</span> {selectedApplication.phone}</p>
-              <p><span className="font-medium text-gray-800">Father:</span> {selectedApplication.fatherName} ({selectedApplication.fatherPhone})</p>
-              <p><span className="font-medium text-gray-800">Mother:</span> {selectedApplication.motherName} ({selectedApplication.motherPhone})</p>
-              <p><span className="font-medium text-gray-800">Blood Group:</span> {selectedApplication.bloodGroup || 'Not provided'}</p>
-              <p><span className="font-medium text-gray-800">Local Guardian:</span> {selectedApplication.localGuardianName} ({selectedApplication.localGuardianPhone})</p>
-              <p><span className="font-medium text-gray-800">Local Guardian Address:</span> {selectedApplication.localGuardianAddress}</p>
-              <p><span className="font-medium text-gray-800">Permanent Address:</span> {selectedApplication.permanentAddress}</p>
-              <p><span className="font-medium text-gray-800">Temporary Address:</span> {selectedApplication.temporaryAddress}</p>
-              <p><span className="font-medium text-gray-800">Date of Birth:</span> {new Date(selectedApplication.dateOfBirth).toLocaleDateString()}</p>
-              <p><span className="font-medium text-gray-800">Requested Class:</span> {selectedApplication.preferredDepartment} · First Semester Intake</p>
+          <div className="space-y-4 text-sm text-[var(--color-text-muted)]">
+            <div className="rounded-xl bg-[var(--color-surface-muted)] p-4">
+              <p><span className="font-medium text-[var(--color-heading)]">Full Name:</span> {selectedApplication.fullName}</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Email:</span> {selectedApplication.email}</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Phone:</span> {selectedApplication.phone}</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Father:</span> {selectedApplication.fatherName} ({selectedApplication.fatherPhone})</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Mother:</span> {selectedApplication.motherName} ({selectedApplication.motherPhone})</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Blood Group:</span> {selectedApplication.bloodGroup || 'Not provided'}</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Local Guardian:</span> {selectedApplication.localGuardianName} ({selectedApplication.localGuardianPhone})</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Local Guardian Address:</span> {selectedApplication.localGuardianAddress}</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Permanent Address:</span> {selectedApplication.permanentAddress}</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Temporary Address:</span> {selectedApplication.temporaryAddress}</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Date of Birth:</span> {new Date(selectedApplication.dateOfBirth).toLocaleDateString()}</p>
+              <p><span className="font-medium text-[var(--color-heading)]">Requested Class:</span> {selectedApplication.preferredDepartment} · First Semester Intake</p>
             </div>
 
             {selectedApplication.status !== 'CONVERTED' ? (
-              <div className="space-y-3 rounded-xl border p-4">
-                <h3 className="font-semibold text-gray-800">Create Student Account</h3>
+              <div className="space-y-3 rounded-xl border border-[var(--color-card-border)] p-4">
+                <h3 className="font-semibold text-[var(--color-heading)]">Create Student Account</h3>
                 {error ? <Alert type="error" message={error} /> : null}
-                <input value={accountForm.studentId} onChange={(e) => setAccountForm((current) => ({ ...current, studentId: e.target.value }))} placeholder="Institution Student ID" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
-                <select value={accountForm.department} onChange={(e) => setAccountForm((current) => ({ ...current, department: e.target.value }))} className="w-full rounded-lg border border-gray-300 px-4 py-2">
+                <input value={accountForm.studentId} onChange={(e) => setAccountForm((current) => ({ ...current, studentId: e.target.value }))} placeholder="Institution Student ID" className="ui-form-input" />
+                <select value={accountForm.department} onChange={(e) => setAccountForm((current) => ({ ...current, department: e.target.value }))} className="ui-form-input">
                   <option value="">Select Department</option>
                   {departments.map((department) => (
                     <option key={department.id} value={department.name}>
@@ -269,22 +276,22 @@ const StudentApplications = () => {
                   ))}
                 </select>
                 <div className="grid grid-cols-2 gap-3">
-                  <input value={accountForm.semester} disabled className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-gray-500" />
-                  <input value={accountForm.section} onChange={(e) => setAccountForm((current) => ({ ...current, section: e.target.value.toUpperCase() }))} placeholder="Section" className="w-full rounded-lg border border-gray-300 px-4 py-2" />
+                  <input value={accountForm.semester} disabled className="ui-form-input" />
+                  <input value={accountForm.section} onChange={(e) => setAccountForm((current) => ({ ...current, section: e.target.value.toUpperCase() }))} placeholder="Section" className="ui-form-input" />
                 </div>
-                <button type="button" disabled={creatingAccount} onClick={createAccount} className="w-full rounded-lg bg-blue-600 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                <button type="button" disabled={creatingAccount} onClick={createAccount} className="ui-role-fill w-full rounded-lg py-2 font-medium disabled:opacity-50">
                   {creatingAccount ? 'Creating Account...' : 'Create Student Account'}
                 </button>
-                <button type="button" onClick={() => setApplicationToDelete(selectedApplication)} className="w-full rounded-lg bg-red-50 py-2 font-medium text-red-600 hover:bg-red-100">
+                <button type="button" onClick={() => setApplicationToDelete(selectedApplication)} className="status-absent w-full rounded-lg border py-2 font-medium">
                   Delete Application
                 </button>
               </div>
             ) : (
-              <div className="space-y-3 rounded-xl border p-4">
-                <div className="rounded-xl bg-green-50 p-4 text-sm text-green-700">
+              <div className="space-y-3 rounded-xl border border-[var(--color-card-border)] p-4">
+                <div className="status-present rounded-xl border p-4 text-sm">
                   This application has already been converted into a student account.
                 </div>
-                <button type="button" onClick={() => setApplicationToDelete(selectedApplication)} className="w-full rounded-lg bg-red-50 py-2 font-medium text-red-600 hover:bg-red-100">
+                <button type="button" onClick={() => setApplicationToDelete(selectedApplication)} className="status-absent w-full rounded-lg border py-2 font-medium">
                   Delete Application Record
                 </button>
               </div>
@@ -295,9 +302,9 @@ const StudentApplications = () => {
 
       {applicationToDelete ? (
         <Modal title="Delete Student Application" onClose={() => setApplicationToDelete(null)}>
-          <div className="space-y-4 text-sm text-gray-600">
+          <div className="space-y-4 text-sm text-[var(--color-text-muted)]">
               <p>
-                Delete the application for <span className="font-medium text-gray-800">{applicationToDelete.fullName}</span>?
+                Delete the application for <span className="font-medium text-[var(--color-heading)]">{applicationToDelete.fullName}</span>?
               </p>
               <p>
                 This should only be used for duplicate, test, or useless submissions.
@@ -308,10 +315,10 @@ const StudentApplications = () => {
                 </p>
               ) : null}
               <div className="flex gap-3">
-              <button type="button" onClick={() => setApplicationToDelete(null)} className="flex-1 rounded-lg border border-gray-300 py-2 font-medium text-gray-700 hover:bg-gray-50">
+              <button type="button" onClick={() => setApplicationToDelete(null)} className="flex-1 rounded-lg border border-[var(--color-card-border)] py-2 font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
                 Cancel
               </button>
-              <button type="button" disabled={deletingApplication} onClick={deleteApplication} className="flex-1 rounded-lg bg-red-600 py-2 font-medium text-white hover:bg-red-700 disabled:opacity-50">
+              <button type="button" disabled={deletingApplication} onClick={deleteApplication} className="status-absent flex-1 rounded-lg border py-2 font-medium disabled:opacity-50">
                 {deletingApplication ? 'Deleting...' : 'Delete Application'}
               </button>
             </div>

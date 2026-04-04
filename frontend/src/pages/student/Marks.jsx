@@ -170,21 +170,21 @@ const StudentMarks = () => {
           <LoadingSkeleton rows={5} itemClassName="h-36" />
         ) : (
           <>
-            <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+            <div className="ui-card mb-6 rounded-3xl p-5 md:p-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Result Session</p>
-                  <p className="mt-1 text-sm text-slate-500">Choose a published exam result to view your GPA, ranking, and subject trends.</p>
+                  <p className="text-sm font-semibold text-[var(--color-heading)]">Result Session</p>
+                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">Choose a published exam result to view your GPA, ranking, and subject trends.</p>
                 </div>
                 <div className="w-full md:max-w-xs">
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Select Exam</label>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">Select Exam</label>
                   <select
                     value={selectedExamType}
                     onChange={(event) => {
                       setSelectedExamType(event.target.value)
                       setPage(1)
                     }}
-                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="ui-form-input"
                   >
                     {availableExamTypes.length === 0 ? (
                       <option value="">No published exams available</option>
@@ -209,37 +209,37 @@ const StudentMarks = () => {
             ) : (
               <>
                 <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-                    <p className="text-sm text-gray-500">Exam</p>
-                    <p className="mt-2 text-xl font-black text-slate-900">
+                  <div className="ui-card rounded-3xl p-5 md:p-6">
+                    <p className="text-sm text-[var(--color-text-muted)]">Exam</p>
+                    <p className="mt-2 text-xl font-black text-[var(--color-heading)]">
                       {examTypeLabels[selectedExamType] || selectedExamType}
                     </p>
                   </div>
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-                    <p className="text-sm text-gray-500">Overall GPA</p>
-                    <p className="mt-2 text-3xl font-black text-slate-900">{resultSheet.overallGpa.toFixed(2)}</p>
+                  <div className="ui-card rounded-3xl p-5 md:p-6">
+                    <p className="text-sm text-[var(--color-text-muted)]">Overall GPA</p>
+                    <p className="mt-2 text-3xl font-black text-[var(--color-heading)]">{resultSheet.overallGpa.toFixed(2)}</p>
                   </div>
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-                    <p className="text-sm text-gray-500">Overall Grade</p>
-                    <p className="mt-2 text-3xl font-black text-slate-900">{resultSheet.overallGrade}</p>
+                  <div className="ui-card rounded-3xl p-5 md:p-6">
+                    <p className="text-sm text-[var(--color-text-muted)]">Overall Grade</p>
+                    <p className="mt-2 text-3xl font-black text-[var(--color-heading)]">{resultSheet.overallGrade}</p>
                   </div>
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-                    <p className="text-sm text-gray-500">Combined Score</p>
-                    <p className="mt-2 text-xl font-black text-slate-900">
+                  <div className="ui-card rounded-3xl p-5 md:p-6">
+                    <p className="text-sm text-[var(--color-text-muted)]">Combined Score</p>
+                    <p className="mt-2 text-xl font-black text-[var(--color-heading)]">
                       {resultSheet.totals.obtainedMarks}/{resultSheet.totals.totalMarks}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">{resultSheet.overallPercentage}% overall</p>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">{resultSheet.overallPercentage}% overall</p>
                   </div>
                 </div>
 
                 <div className="mb-6 grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+                  <div className="ui-card rounded-3xl p-5 md:p-6">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <h2 className="text-lg font-semibold text-slate-900">Performance Chart</h2>
-                        <p className="mt-1 text-sm text-slate-500">Subject-by-subject percentage breakdown for this published exam.</p>
+                        <h2 className="text-lg font-semibold text-[var(--color-heading)]">Performance Chart</h2>
+                        <p className="mt-1 text-sm text-[var(--color-text-muted)]">Subject-by-subject percentage breakdown for this published exam.</p>
                       </div>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                      <span className="ui-status-badge ui-status-neutral px-3 py-1 text-xs font-semibold">
                         {summary.analytics.chartData.length} subjects
                       </span>
                     </div>
@@ -248,42 +248,42 @@ const StudentMarks = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-                      <p className="text-sm text-slate-500">Semester Ranking</p>
-                      <p className="mt-2 text-3xl font-black text-slate-900">
+                    <div className="ui-card rounded-3xl p-5 md:p-6">
+                      <p className="text-sm text-[var(--color-text-muted)]">Semester Ranking</p>
+                      <p className="mt-2 text-3xl font-black text-[var(--color-heading)]">
                         {summary.ranking.rank ? `#${summary.ranking.rank}` : '--'}
                       </p>
-                      <p className="mt-2 text-sm text-slate-500">
+                      <p className="mt-2 text-sm text-[var(--color-text-muted)]">
                         {summary.ranking.cohortSize > 0
                           ? `Out of ${summary.ranking.cohortSize} students in Semester ${summary.ranking.scope.semester || '--'}${summary.ranking.scope.department ? ` • ${summary.ranking.scope.department}` : ''}`
                           : 'Ranking will appear once comparable published results are available.'}
                       </p>
-                      <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Percentile</p>
-                        <p className="mt-2 text-xl font-bold text-slate-900">{summary.ranking.percentile.toFixed(2)}%</p>
+                      <div className="mt-4 rounded-2xl bg-[var(--color-surface-muted)] px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">Percentile</p>
+                        <p className="mt-2 text-xl font-bold text-[var(--color-heading)]">{summary.ranking.percentile.toFixed(2)}%</p>
                       </div>
                     </div>
 
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-                      <h2 className="text-lg font-semibold text-slate-900">Insight Snapshot</h2>
+                    <div className="ui-card rounded-3xl p-5 md:p-6">
+                      <h2 className="text-lg font-semibold text-[var(--color-heading)]">Insight Snapshot</h2>
                       <div className="mt-4 space-y-3">
-                        <div className="rounded-2xl bg-emerald-50 px-4 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Strongest Subject</p>
-                          <p className="mt-2 text-sm font-semibold text-slate-900">
+                        <div className="status-present rounded-2xl px-4 py-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em]">Strongest Subject</p>
+                          <p className="mt-2 text-sm font-semibold text-[var(--color-heading)]">
                             {summary.analytics.strongestSubject?.subjectName || 'Not available'}
                           </p>
-                          <p className="mt-1 text-xs text-slate-600">
+                          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                             {summary.analytics.strongestSubject
                               ? `${summary.analytics.strongestSubject.subjectCode} • ${summary.analytics.strongestSubject.percentage}% • ${summary.analytics.strongestSubject.grade}`
                               : 'No published subject result yet.'}
                           </p>
                         </div>
-                        <div className="rounded-2xl bg-amber-50 px-4 py-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Needs More Attention</p>
-                          <p className="mt-2 text-sm font-semibold text-slate-900">
+                        <div className="status-late rounded-2xl px-4 py-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em]">Needs More Attention</p>
+                          <p className="mt-2 text-sm font-semibold text-[var(--color-heading)]">
                             {summary.analytics.weakestSubject?.subjectName || 'Not available'}
                           </p>
-                          <p className="mt-1 text-xs text-slate-600">
+                          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                             {summary.analytics.weakestSubject
                               ? `${summary.analytics.weakestSubject.subjectCode} • ${summary.analytics.weakestSubject.percentage}% • ${summary.analytics.weakestSubject.grade}`
                               : 'No published subject result yet.'}
@@ -293,18 +293,18 @@ const StudentMarks = () => {
                     </div>
 
                     {summary.ranking.topStudents.length > 0 && (
-                      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-                        <h2 className="text-lg font-semibold text-slate-900">Top Rankers</h2>
+                      <div className="ui-card rounded-3xl p-5 md:p-6">
+                        <h2 className="text-lg font-semibold text-[var(--color-heading)]">Top Rankers</h2>
                         <div className="mt-4 space-y-3">
                           {summary.ranking.topStudents.map((student, index) => (
-                            <div key={`${student.userId}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                            <div key={`${student.userId}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--color-surface-muted)] px-4 py-3">
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-slate-900">{student.name}</p>
-                                <p className="text-xs text-slate-500">Rank #{index + 1}</p>
+                                <p className="truncate text-sm font-semibold text-[var(--color-heading)]">{student.name}</p>
+                                <p className="text-xs text-[var(--color-text-muted)]">Rank #{index + 1}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-semibold text-slate-900">{student.overallGpa.toFixed(2)} GPA</p>
-                                <p className="text-xs text-slate-500">{student.overallPercentage}%</p>
+                                <p className="text-sm font-semibold text-[var(--color-heading)]">{student.overallGpa.toFixed(2)} GPA</p>
+                                <p className="text-xs text-[var(--color-text-muted)]">{student.overallPercentage}%</p>
                               </div>
                             </div>
                           ))}
@@ -314,10 +314,10 @@ const StudentMarks = () => {
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div className="ui-card overflow-hidden rounded-3xl">
                   <div className="border-b p-6">
-                    <h2 className="text-lg font-semibold text-slate-900">Subject-wise Result List</h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <h2 className="text-lg font-semibold text-[var(--color-heading)]">Subject-wise Result List</h2>
+                    <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                       Published marks for all subjects in the selected exam that belong to your enrolled semester modules.
                     </p>
                   </div>
@@ -326,20 +326,20 @@ const StudentMarks = () => {
                     {resultSheet.subjects.map((subject) => (
                         <div key={subject.id} className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
                           <div className="min-w-0">
-                            <p className="font-semibold text-slate-900">{subject.subjectName}</p>
-                            <p className="mt-1 text-xs text-slate-500">{subject.subjectCode}</p>
+                            <p className="font-semibold text-[var(--color-heading)]">{subject.subjectName}</p>
+                            <p className="mt-1 text-xs text-[var(--color-text-muted)]">{subject.subjectCode}</p>
                           </div>
                         <div className="flex flex-wrap items-center gap-3">
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                          <span className="ui-status-badge ui-status-neutral px-3 py-1 text-xs font-semibold">
                             Marks: {subject.obtainedMarks}/{subject.totalMarks}
                           </span>
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                          <span className="ui-status-badge ui-status-neutral px-3 py-1 text-xs font-semibold">
                             {subject.percentage}%
                           </span>
                           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${gradeTone(subject.grade)}`}>
                             Grade: {subject.grade}
                           </span>
-                          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                          <span className="grade-merit rounded-full px-3 py-1 text-xs font-semibold">
                             GPA: {subject.gradePoint.toFixed(1)}
                           </span>
                         </div>
@@ -349,14 +349,14 @@ const StudentMarks = () => {
                 </div>
 
                 {marks.length > 0 && (
-                  <div className="mt-6 rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                  <div className="ui-card mt-6 overflow-hidden rounded-3xl">
                     <div className="border-b p-6">
-                      <h2 className="text-lg font-semibold text-slate-900">Published Mark Ledger</h2>
+                      <h2 className="text-lg font-semibold text-[var(--color-heading)]">Published Mark Ledger</h2>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[860px]">
-                        <thead className="bg-slate-50">
-                          <tr className="text-left text-sm text-slate-500">
+                        <thead className="bg-[var(--color-surface-muted)]">
+                          <tr className="text-left text-sm text-[var(--color-text-muted)]">
                             <th className="px-6 py-4">Subject</th>
                             <th className="px-6 py-4">Marks</th>
                             <th className="px-6 py-4">Percentage</th>
@@ -368,13 +368,13 @@ const StudentMarks = () => {
                           {marks.map((mark) => (
                             <tr key={mark.id} className="border-t">
                               <td className="px-6 py-4">
-                                <p className="font-medium text-slate-900">{mark.subject?.name}</p>
-                                <p className="text-xs text-slate-500">{mark.subject?.code}</p>
+                                <p className="font-medium text-[var(--color-heading)]">{mark.subject?.name}</p>
+                                <p className="text-xs text-[var(--color-text-muted)]">{mark.subject?.code}</p>
                               </td>
-                              <td className="px-6 py-4 text-slate-700">{mark.obtainedMarks}/{mark.totalMarks}</td>
-                              <td className="px-6 py-4 text-slate-700">{mark.percentage.toFixed(1)}%</td>
-                              <td className="px-6 py-4 text-slate-700">{mark.grade}</td>
-                              <td className="px-6 py-4 text-sm text-slate-500">{mark.remarks || '-'}</td>
+                              <td className="px-6 py-4 text-[var(--color-text-muted)]">{mark.obtainedMarks}/{mark.totalMarks}</td>
+                              <td className="px-6 py-4 text-[var(--color-text-muted)]">{mark.percentage.toFixed(1)}%</td>
+                              <td className="px-6 py-4 text-[var(--color-text-muted)]">{mark.grade}</td>
+                              <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">{mark.remarks || '-'}</td>
                             </tr>
                           ))}
                         </tbody>

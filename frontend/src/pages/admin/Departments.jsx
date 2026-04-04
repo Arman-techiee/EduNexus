@@ -118,36 +118,36 @@ const Departments = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {departments.map((department) => (
-              <div key={department.id} className="bg-white rounded-2xl shadow-sm p-6">
+              <div key={department.id} className="ui-card rounded-2xl p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                    <span className="grade-merit rounded px-2 py-1 text-xs font-bold">
                       {department.code}
                     </span>
-                    <h3 className="font-semibold text-gray-800 mt-2">{department.name}</h3>
+                    <h3 className="mt-2 font-semibold text-[var(--color-heading)]">{department.name}</h3>
                   </div>
                 </div>
 
                 {department.description && (
-                  <p className="text-sm text-gray-500 mb-4 line-clamp-3">{department.description}</p>
+                  <p className="mb-4 line-clamp-3 text-sm text-[var(--color-text-muted)]">{department.description}</p>
                 )}
 
-                <div className="flex gap-4 text-xs text-gray-500 mb-4">
+                <div className="mb-4 flex gap-4 text-xs text-[var(--color-text-muted)]">
                   <span>👨‍🎓 {department._count?.students || 0} students</span>
                   <span>👩‍🏫 {department._count?.instructors || 0} instructors</span>
                   <span>📚 {department._count?.subjects || 0} subjects</span>
                 </div>
 
-                <div className="flex gap-2 pt-4 border-t">
+                <div className="flex gap-2 border-t border-[var(--color-card-border)] pt-4">
                   <button
                     onClick={() => openEditModal(department)}
-                    className="flex-1 text-xs bg-blue-50 text-blue-600 py-2 rounded-lg hover:bg-blue-100 transition font-medium"
+                    className="grade-merit flex-1 rounded-lg border py-2 text-xs font-medium transition"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => setDepartmentToDelete(department)}
-                    className="flex-1 text-xs bg-red-50 text-red-600 py-2 rounded-lg hover:bg-red-100 transition font-medium"
+                    className="status-absent flex-1 rounded-lg border py-2 text-xs font-medium transition"
                   >
                     Delete
                   </button>
@@ -165,7 +165,7 @@ const Departments = () => {
                     <button
                       type="button"
                       onClick={openCreateModal}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                      className="ui-role-fill rounded-lg px-4 py-2 text-sm font-medium"
                     >
                       Add Department
                     </button>
@@ -211,10 +211,10 @@ const Departments = () => {
                 />
               </div>
               <div className="ui-modal-footer">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 rounded-lg border border-[var(--color-card-border)] py-2 text-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]">
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 font-medium">
+                <button type="submit" className="ui-role-fill flex-1 rounded-lg py-2 text-sm font-medium">
                   {editingDepartment ? 'Update' : 'Create'}
                 </button>
               </div>

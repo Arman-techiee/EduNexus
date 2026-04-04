@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import InstructorLayout from '../../layouts/InstructorLayout'
 import CoordinatorLayout from '../../layouts/CoordinatorLayout'
+import Alert from '../../components/Alert'
 import StatusBadge from '../../components/StatusBadge'
 import PageHeader from '../../components/PageHeader'
 import QrScanPanel from '../../components/QrScanPanel'
@@ -12,6 +13,7 @@ import EmptyState from '../../components/EmptyState'
 import LoadingSkeleton from '../../components/LoadingSkeleton'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import { getFriendlyErrorMessage } from '../../utils/errors'
+import { isRequestCanceled } from '../../utils/http'
 import logger from '../../utils/logger'
 const DEFAULT_STATUS = 'PRESENT'
 const STATUSES = ['PRESENT', 'ABSENT', 'LATE']
@@ -20,9 +22,9 @@ const getToday = () => new Date().toISOString().slice(0, 10)
 const getCurrentMonth = () => new Date().toISOString().slice(0, 7)
 
 const statusClasses = {
-  PRESENT: 'bg-green-100 text-green-700 border-green-200',
-  ABSENT: 'bg-red-100 text-red-700 border-red-200',
-  LATE: 'bg-orange-100 text-orange-700 border-orange-200'
+  PRESENT: 'status-present',
+  ABSENT: 'status-absent',
+  LATE: 'status-late'
 }
 
 const Attendance = () => {
@@ -53,23 +55,25 @@ const Attendance = () => {
   const [scanningStudentId, setScanningStudentId] = useState(false)
   const debouncedSearch = useDebouncedValue(search, 250)
 
-  const fetchSubjects = useCallback(async () => {
+  const fetchSubjects = useCallback(async (signal) => {
     try {
-      const res = await api.get('/subjects')
+      const res = await api.get('/subjects', { signal })
       setSubjects(res.data.subjects)
     } catch (fetchError) {
+      if (isRequestCanceled(fetchError)) return
       logger.error(fetchError)
       setError('Unable to load subjects')
     }
   }, [])
 
-  const fetchAttendanceWorkspace = useCallback(async () => {
+  const fetchAttendanceWorkspace = useCallback(async (signal) => {
     try {
       setLoading(true)
       setError('')
 
       const [rosterRes, attendanceRes] = await Promise.all([
         api.get(`/attendance/subject/${selectedSubject}/roster`, {
+          signal,
           params: {
             date: selectedDate,
             semester: selectedSemester,
@@ -77,6 +81,7 @@ const Attendance = () => {
           }
         }),
         api.get(`/attendance/subject/${selectedSubject}`, {
+          signal,
           params: {
             date: selectedDate,
             semester: selectedSemester,
@@ -89,14 +94,17 @@ const Attendance = () => {
       setAttendance(attendanceRes.data.attendance)
       setSummary(attendanceRes.data.summary)
     } catch (fetchError) {
+      if (isRequestCanceled(fetchError)) return
       logger.error(fetchError)
       setError(getFriendlyErrorMessage(fetchError, 'Unable to load attendance data.'))
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [selectedDate, selectedSection, selectedSemester, selectedSubject])
 
-  const fetchCoordinatorDepartmentReport = useCallback(async () => {
+  const fetchCoordinatorDepartmentReport = useCallback(async (signal) => {
     if (!selectedSemester) {
       setError('Please select a semester to load the department report.')
       return
@@ -107,6 +115,7 @@ const Attendance = () => {
       setError('')
 
       const res = await api.get('/attendance/coordinator/department-report', {
+        signal,
         params: {
           month: selectedMonth,
           semester: selectedSemester,
@@ -128,18 +137,25 @@ const Attendance = () => {
       setRoster([])
       setAttendance([])
     } catch (fetchError) {
+      if (isRequestCanceled(fetchError)) return
       logger.error(fetchError)
       setError(getFriendlyErrorMessage(fetchError, 'Unable to load the department attendance report.'))
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [selectedMonth, selectedSection, selectedSemester])
 
   useEffect(() => {
-    void fetchSubjects()
+    const controller = new AbortController()
+    void fetchSubjects(controller.signal)
+    return () => controller.abort()
   }, [fetchSubjects])
 
   useEffect(() => {
+    const controller = new AbortController()
+
     if (isCoordinator) {
       setSelectedSubject('')
       if (!selectedSemester) {
@@ -147,10 +163,10 @@ const Attendance = () => {
         setMonthlyStudents([])
         setMonthlyMeta({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
         setSummary({ total: 0, present: 0, absent: 0, late: 0 })
-        return
+        return () => controller.abort()
       }
-      void fetchCoordinatorDepartmentReport()
-      return
+      void fetchCoordinatorDepartmentReport(controller.signal)
+      return () => controller.abort()
     }
 
     if (!selectedSubject || !selectedSemester || !selectedSection) {
@@ -159,10 +175,12 @@ const Attendance = () => {
       setMonthlyStudents([])
       setMonthlyMeta({ monthLabel: '', totalStudents: 0, totalRecords: 0, department: '', semester: '', section: '' })
       setSummary({ total: 0, present: 0, absent: 0, late: 0 })
-      return
+      return () => controller.abort()
     }
 
-    void fetchAttendanceWorkspace()
+    void fetchAttendanceWorkspace(controller.signal)
+
+    return () => controller.abort()
   }, [
     fetchAttendanceWorkspace,
     fetchCoordinatorDepartmentReport,
@@ -386,19 +404,19 @@ const Attendance = () => {
           }]}
         />
 
-        {success && <div className="bg-green-50 text-green-600 px-4 py-3 rounded-lg mb-4 text-sm">{success}</div>}
-        {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
+        <Alert type="success" message={success} />
+        <Alert type="error" message={error} />
 
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+        <div className="ui-card rounded-2xl p-6 mb-6">
           <div className={`grid grid-cols-1 gap-4 ${isCoordinator ? 'md:grid-cols-4' : 'md:grid-cols-5'}`}>
             {isCoordinator ? (
               <>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-2">Semester</label>
+                  <label className="block text-sm text-[var(--color-text-muted)] mb-2">Semester</label>
                   <select
                     value={selectedSemester}
                     onChange={(e) => setSelectedSemester(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="ui-form-input"
                   >
                     {Array.from({ length: 8 }, (_, index) => (
                       <option key={index + 1} value={String(index + 1)}>
@@ -408,19 +426,19 @@ const Attendance = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-2">Section</label>
+                  <label className="block text-sm text-[var(--color-text-muted)] mb-2">Section</label>
                   <input
                     type="text"
                     value={selectedSection}
                     onChange={(e) => setSelectedSection(e.target.value.toUpperCase())}
                     placeholder="All sections or A/B/C"
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="ui-form-input"
                   />
                 </div>
               </>
             ) : (
               <div>
-                <label className="block text-sm text-gray-600 mb-2">Module</label>
+                <label className="block text-sm text-[var(--color-text-muted)] mb-2">Module</label>
                 <select
                   value={selectedSubject}
                   onChange={(e) => {
@@ -432,7 +450,7 @@ const Attendance = () => {
                     setQrCode(null)
                     setError('')
                   }}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="ui-form-input"
                 >
                   <option value="">Select Subject</option>
                   {subjects.map((subject) => (
@@ -445,11 +463,11 @@ const Attendance = () => {
             )}
             {!isCoordinator && (
               <div>
-                <label className="block text-sm text-gray-600 mb-2">Semester</label>
+                <label className="block text-sm text-[var(--color-text-muted)] mb-2">Semester</label>
                 <select
                   value={selectedSemester}
                   onChange={(e) => setSelectedSemester(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="ui-form-input"
                 >
                   <option value="">Select Semester</option>
                   {Array.from({ length: 8 }, (_, index) => (
@@ -462,34 +480,34 @@ const Attendance = () => {
             )}
             {!isCoordinator && (
               <div>
-                <label className="block text-sm text-gray-600 mb-2">Section</label>
+                <label className="block text-sm text-[var(--color-text-muted)] mb-2">Section</label>
                 <input
                   type="text"
                   value={selectedSection}
                   onChange={(e) => setSelectedSection(e.target.value.toUpperCase())}
                   placeholder="A / B / C"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="ui-form-input"
                 />
               </div>
             )}
             {isCoordinator ? (
               <div>
-                <label className="block text-sm text-gray-600 mb-2">Report Month</label>
+                <label className="block text-sm text-[var(--color-text-muted)] mb-2">Report Month</label>
                 <input
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="ui-form-input"
                 />
               </div>
             ) : (
               <div>
-                <label className="block text-sm text-gray-600 mb-2">Attendance Date</label>
+                <label className="block text-sm text-[var(--color-text-muted)] mb-2">Attendance Date</label>
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="ui-form-input"
                 />
               </div>
             )}
@@ -498,7 +516,7 @@ const Attendance = () => {
                 type="button"
                 onClick={isCoordinator ? fetchCoordinatorDepartmentReport : fetchAttendanceWorkspace}
                 disabled={isCoordinator ? !selectedSemester : !selectedSubject || !selectedSemester || !selectedSection}
-                className="w-full bg-gray-900 text-white py-2.5 rounded-lg hover:bg-black transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full ui-role-fill py-2.5 rounded-lg transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isCoordinator ? 'Load Department Report' : 'Refresh Attendance'}
               </button>
@@ -509,51 +527,51 @@ const Attendance = () => {
         {(isCoordinator || (selectedSubject && selectedSemester && selectedSection)) && (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white rounded-2xl shadow-sm p-5">
-                <p className="text-sm text-gray-500">Students</p>
-                <p className="text-2xl font-bold text-gray-800 mt-1">{isCoordinator ? monthlyMeta.totalStudents : roster.length}</p>
+              <div className="ui-card rounded-2xl p-5">
+                <p className="text-sm text-[var(--color-text-muted)]">Students</p>
+                <p className="text-2xl font-bold text-[var(--color-heading)] mt-1">{isCoordinator ? monthlyMeta.totalStudents : roster.length}</p>
               </div>
-              <div className="bg-white rounded-2xl shadow-sm p-5">
-                <p className="text-sm text-gray-500">Present</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{summary.present}</p>
+              <div className="ui-card rounded-2xl p-5">
+                <p className="text-sm text-[var(--color-text-muted)]">Present</p>
+                <p className="status-present mt-1 inline-flex rounded-lg px-3 py-1 text-2xl font-bold">{summary.present}</p>
               </div>
-              <div className="bg-white rounded-2xl shadow-sm p-5">
-                <p className="text-sm text-gray-500">Absent</p>
-                <p className="text-2xl font-bold text-red-600 mt-1">{summary.absent}</p>
+              <div className="ui-card rounded-2xl p-5">
+                <p className="text-sm text-[var(--color-text-muted)]">Absent</p>
+                <p className="status-absent mt-1 inline-flex rounded-lg px-3 py-1 text-2xl font-bold">{summary.absent}</p>
               </div>
-              <div className="bg-white rounded-2xl shadow-sm p-5">
-                <p className="text-sm text-gray-500">{isCoordinator ? 'Recorded Entries' : 'Late'}</p>
-                <p className="text-2xl font-bold text-orange-500 mt-1">{isCoordinator ? monthlyMeta.totalRecords : summary.late}</p>
+              <div className="ui-card rounded-2xl p-5">
+                <p className="text-sm text-[var(--color-text-muted)]">{isCoordinator ? 'Recorded Entries' : 'Late'}</p>
+                <p className="status-late mt-1 inline-flex rounded-lg px-3 py-1 text-2xl font-bold">{isCoordinator ? monthlyMeta.totalRecords : summary.late}</p>
               </div>
             </div>
 
             {!isCoordinator && (
             <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6 mb-6">
-              <div className="bg-white rounded-2xl shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-3">QR Attendance</h2>
-                <p className="text-sm text-gray-500 mb-4">
+              <div className="ui-card rounded-2xl p-6">
+                <h2 className="text-lg font-semibold text-[var(--color-heading)] mb-3">QR Attendance</h2>
+                <p className="text-sm text-[var(--color-text-muted)] mb-4">
                   Students can mark today&apos;s attendance by scanning the QR. Manual save can still adjust the final status list.
                 </p>
                 <button
                   type="button"
                   onClick={generateQR}
-                  className="w-full bg-green-600 text-white py-3 rounded-xl hover:bg-green-700 transition font-medium"
+                  className="w-full ui-role-fill py-3 rounded-xl transition font-medium"
                 >
                   Generate QR Code
                 </button>
                 {qrCode && (
                   <div className="mt-5 text-center">
-                    <img src={qrCode} alt="QR Code" className="mx-auto rounded-xl border" style={{ width: 220 }} />
-                    <p className="text-xs text-orange-500 mt-3">Expires in {qrExpiry}</p>
+                    <img src={qrCode} alt="QR Code" className="mx-auto rounded-xl border border-[var(--color-card-border)]" style={{ width: 220 }} />
+                    <p className="status-late mt-3 inline-flex rounded-lg px-3 py-1 text-xs">Expires in {qrExpiry}</p>
                   </div>
                 )}
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm p-6">
+              <div className="ui-card rounded-2xl p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-800">Manual Attendance</h2>
-                    <p className="text-sm text-gray-500 mt-1">Mark the correct status for each student in the selected module, semester, section, and date.</p>
+                    <h2 className="text-lg font-semibold text-[var(--color-heading)]">Manual Attendance</h2>
+                    <p className="text-sm text-[var(--color-text-muted)] mt-1">Mark the correct status for each student in the selected module, semester, section, and date.</p>
                   </div>
                   <div className="flex gap-2">
                     {STATUSES.map((status) => (
@@ -575,13 +593,13 @@ const Attendance = () => {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search by name, roll number, email, section..."
-                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="ui-form-input flex-1"
                   />
                   <button
                     type="button"
                     onClick={saveManualAttendance}
                     disabled={saving || loading || roster.length === 0}
-                    className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="grade-merit border px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving ? 'Saving...' : 'Save Attendance'}
                   </button>
@@ -589,7 +607,7 @@ const Attendance = () => {
                     type="button"
                     onClick={() => exportAttendanceReport('xlsx')}
                     disabled={loading || !attendance.length || !!exportingFormat}
-                    className="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="status-present border px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {exportingFormat === 'xlsx' ? 'Exporting...' : 'Export Excel'}
                   </button>
@@ -597,7 +615,7 @@ const Attendance = () => {
                     type="button"
                     onClick={() => exportAttendanceReport('pdf')}
                     disabled={loading || !attendance.length || !!exportingFormat}
-                    className="bg-slate-700 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="ui-role-fill px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {exportingFormat === 'pdf' ? 'Exporting...' : 'Export PDF'}
                   </button>
@@ -614,14 +632,14 @@ const Attendance = () => {
                 ) : (
                   <div className="space-y-3 max-h-[540px] overflow-y-auto pr-1">
                     {filteredRoster.map((student) => (
-                      <div key={student.id} className="border border-gray-200 rounded-xl p-4">
+                      <div key={student.id} className="border border-[var(--color-card-border)] rounded-xl p-4">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                           <div>
-                            <p className="font-semibold text-gray-800">{student.name}</p>
-                            <p className="text-sm text-gray-500 mt-1">
+                            <p className="font-semibold text-[var(--color-heading)]">{student.name}</p>
+                            <p className="text-sm text-[var(--color-text-muted)] mt-1">
                               {student.rollNumber} • {student.email}
                             </p>
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-[var(--color-text-soft)] mt-1">
                               Semester {student.semester}{student.department ? ` • ${student.department}` : ''}{student.section ? ` • Section ${student.section}` : ''}
                             </p>
                           </div>
@@ -632,7 +650,7 @@ const Attendance = () => {
                                 type="button"
                                 onClick={() => setStudentStatus(student.id, status)}
                                 className={`px-3 py-2 rounded-lg text-xs font-semibold border transition ${
-                                  student.status === status ? statusClasses[status] : 'bg-gray-50 text-gray-500 border-gray-200'
+                                  student.status === status ? statusClasses[status] : 'bg-[var(--color-surface-muted)] text-[var(--color-text-muted)] border-[var(--color-card-border)]'
                                 }`}
                               >
                                 {status}
@@ -661,11 +679,11 @@ const Attendance = () => {
               />
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between p-6 border-b">
+            <div className="ui-card rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[var(--color-card-border)] p-6">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-800">{isCoordinator ? 'Monthly Attendance Report' : 'Saved Records'}</h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <h2 className="text-lg font-semibold text-[var(--color-heading)]">{isCoordinator ? 'Monthly Attendance Report' : 'Saved Records'}</h2>
+                  <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                     {isCoordinator
                       ? `Showing ${monthlyMeta.department || 'department'} attendance for semester ${monthlyMeta.semester || selectedSemester}${monthlyMeta.section ? `, section ${monthlyMeta.section}` : ''} in ${monthlyMeta.monthLabel || selectedMonth}.`
                       : `Showing records for ${selectedDate}.`}
@@ -696,13 +714,13 @@ const Attendance = () => {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search by name, roll number, email, section..."
-                        className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="ui-form-input flex-1"
                       />
                       <button
                         type="button"
                         onClick={() => exportAttendanceReport('xlsx')}
                         disabled={!monthlyStudents.length || !!exportingFormat}
-                        className="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="status-present rounded-lg border px-5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {exportingFormat === 'xlsx' ? 'Exporting...' : 'Export Excel'}
                       </button>
@@ -710,15 +728,15 @@ const Attendance = () => {
                         type="button"
                         onClick={() => exportAttendanceReport('pdf')}
                         disabled={!monthlyStudents.length || !!exportingFormat}
-                        className="bg-slate-700 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="ui-role-fill rounded-lg px-5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {exportingFormat === 'pdf' ? 'Exporting...' : 'Export PDF'}
                       </button>
                     </div>
                     <div className="overflow-x-auto max-h-[520px]">
                       <table className="w-full min-w-[980px]">
-                        <thead className="sticky top-0 z-10 bg-slate-50">
-                          <tr className="text-left text-sm text-gray-500">
+                        <thead className="sticky top-0 z-10 bg-[var(--color-surface-muted)]">
+                          <tr className="text-left text-sm text-[var(--color-text-muted)]">
                             <th className="px-4 py-3">Student</th>
                             <th className="px-4 py-3">Roll</th>
                             <th className="px-4 py-3">Section</th>
@@ -730,34 +748,34 @@ const Attendance = () => {
                         </thead>
                         <tbody>
                           {filteredMonthlyStudents.map((student) => (
-                            <tr key={student.id} className="border-t border-slate-200 transition-colors hover:bg-blue-50/30">
+                            <tr key={student.id} className="border-t border-[var(--color-card-border)] transition-colors hover:bg-[var(--color-surface-muted)]/70">
                               <td className="px-4 py-4">
-                                <p className="font-semibold text-slate-900">{student.name}</p>
-                                <p className="text-xs text-gray-500 mt-1">{student.email}</p>
+                                <p className="font-semibold text-[var(--color-heading)]">{student.name}</p>
+                                <p className="mt-1 text-xs text-[var(--color-text-muted)]">{student.email}</p>
                               </td>
-                              <td className="px-4 py-4 text-sm text-gray-600">{student.rollNumber}</td>
-                              <td className="px-4 py-4 text-sm text-gray-600">{student.section || '-'}</td>
-                              <td className="px-4 py-4 text-sm font-semibold text-green-600">{student.present}</td>
-                              <td className="px-4 py-4 text-sm font-semibold text-red-600">{student.absent}</td>
-                              <td className="px-4 py-4 text-sm font-semibold text-orange-500">{student.late}</td>
-                              <td className="px-4 py-4 text-sm font-semibold text-gray-800">{student.monthlyAverage}%</td>
+                              <td className="px-4 py-4 text-sm text-[var(--color-text-muted)]">{student.rollNumber}</td>
+                              <td className="px-4 py-4 text-sm text-[var(--color-text-muted)]">{student.section || '-'}</td>
+                              <td className="px-4 py-4 text-sm font-semibold"><span className="status-present rounded-lg px-2 py-1">{student.present}</span></td>
+                              <td className="px-4 py-4 text-sm font-semibold"><span className="status-absent rounded-lg px-2 py-1">{student.absent}</span></td>
+                              <td className="px-4 py-4 text-sm font-semibold"><span className="status-late rounded-lg px-2 py-1">{student.late}</span></td>
+                              <td className="px-4 py-4 text-sm font-semibold text-[var(--color-heading)]">{student.monthlyAverage}%</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                    <div className="mt-6 border-t pt-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-base font-semibold text-gray-800">Attendance Record List</h3>
-                          <p className="text-sm text-gray-500 mt-1">Detailed monthly entries for every student in the selected department group.</p>
-                        </div>
+                      <div className="mt-6 border-t border-[var(--color-card-border)] pt-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                          <h3 className="text-base font-semibold text-[var(--color-heading)]">Attendance Record List</h3>
+                          <p className="mt-1 text-sm text-[var(--color-text-muted)]">Detailed monthly entries for every student in the selected department group.</p>
+                          </div>
                         <span className="ui-status-badge ui-status-neutral">{filteredCoordinatorRecords.length} records</span>
                       </div>
                       <div className="overflow-x-auto mt-4 max-h-[420px]">
                         <table className="w-full min-w-[980px]">
-                          <thead className="sticky top-0 z-10 bg-slate-50">
-                            <tr className="text-left text-sm text-gray-500">
+                          <thead className="sticky top-0 z-10 bg-[var(--color-surface-muted)]">
+                            <tr className="text-left text-sm text-[var(--color-text-muted)]">
                               <th className="px-4 py-3">Student</th>
                               <th className="px-4 py-3">Roll</th>
                               <th className="px-4 py-3">Subject</th>
@@ -767,17 +785,17 @@ const Attendance = () => {
                           </thead>
                           <tbody>
                             {filteredCoordinatorRecords.map((record) => (
-                              <tr key={record.id} className="border-t border-slate-200 transition-colors hover:bg-blue-50/30">
+                              <tr key={record.id} className="border-t border-[var(--color-card-border)] transition-colors hover:bg-[var(--color-surface-muted)]/70">
                                 <td className="px-4 py-4">
-                                  <p className="font-semibold text-slate-900">{record.student.name}</p>
-                                  <p className="text-xs text-gray-500 mt-1">{record.student.email}</p>
+                                  <p className="font-semibold text-[var(--color-heading)]">{record.student.name}</p>
+                                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">{record.student.email}</p>
                                 </td>
-                                <td className="px-4 py-4 text-sm text-gray-600">{record.student.rollNumber}</td>
-                                <td className="px-4 py-4 text-sm text-gray-600">
+                                <td className="px-4 py-4 text-sm text-[var(--color-text-muted)]">{record.student.rollNumber}</td>
+                                <td className="px-4 py-4 text-sm text-[var(--color-text-muted)]">
                                   {record.subject.name}
-                                  <span className="text-xs text-gray-400 ml-2">{record.subject.code}</span>
+                                  <span className="ml-2 text-xs text-[var(--color-text-soft)]">{record.subject.code}</span>
                                 </td>
-                                <td className="px-4 py-4 text-sm text-gray-600">{new Date(record.date).toLocaleDateString()}</td>
+                                <td className="px-4 py-4 text-sm text-[var(--color-text-muted)]">{new Date(record.date).toLocaleDateString()}</td>
                                 <td className="px-4 py-4">
                                   <StatusBadge status={record.status} />
                                 </td>
@@ -800,8 +818,8 @@ const Attendance = () => {
               ) : (
                 <div className="overflow-x-auto max-h-[520px]">
                   <table className="w-full min-w-[720px]">
-                    <thead className="sticky top-0 z-10 bg-slate-50">
-                      <tr className="text-left text-sm text-gray-500">
+                    <thead className="sticky top-0 z-10 bg-[var(--color-surface-muted)]">
+                      <tr className="text-left text-sm text-[var(--color-text-muted)]">
                         <th className="px-6 py-4">Student</th>
                         <th className="px-6 py-4">Email</th>
                         <th className="px-6 py-4">Date</th>
@@ -810,13 +828,13 @@ const Attendance = () => {
                     </thead>
                     <tbody>
                       {attendance.map((record) => (
-                        <tr key={record.id} className="border-t border-slate-200 transition-colors hover:bg-blue-50/30">
+                        <tr key={record.id} className="border-t border-[var(--color-card-border)] transition-colors hover:bg-[var(--color-surface-muted)]/70">
                           <td className="px-6 py-4">
-                            <p className="font-semibold text-slate-900">{record.student?.user?.name}</p>
-                            <p className="text-xs text-gray-500 mt-1">{record.student?.rollNumber}</p>
+                            <p className="font-semibold text-[var(--color-heading)]">{record.student?.user?.name}</p>
+                            <p className="mt-1 text-xs text-[var(--color-text-muted)]">{record.student?.rollNumber}</p>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">{record.student?.user?.email}</td>
-                          <td className="px-6 py-4 text-sm text-gray-500">{new Date(record.date).toLocaleDateString()}</td>
+                          <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">{record.student?.user?.email}</td>
+                          <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">{new Date(record.date).toLocaleDateString()}</td>
                           <td className="px-6 py-4">
                             <StatusBadge status={record.status} />
                           </td>

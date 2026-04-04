@@ -225,14 +225,14 @@ const Notices = () => {
         {/* Success/Error */}
         <Alert type="error" message={error} />
 
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <label className="mb-2 block text-sm font-medium text-slate-700">Search notices</label>
+        <div className="ui-card mb-6 rounded-2xl p-4">
+          <label className="mb-2 block text-sm font-medium text-[var(--color-heading)]">Search notices</label>
           <input
             type="text"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Search by title, content, department, or author"
-            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="ui-form-input"
           />
         </div>
 
@@ -251,19 +251,19 @@ const Notices = () => {
                           {initialsFromName(notice.user?.name)}
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900">{notice.user?.name || 'Unknown author'}</p>
-                          <p className="text-xs text-slate-400">{relativeDate(notice.createdAt)}</p>
+                          <p className="truncate text-sm font-semibold text-[var(--color-heading)]">{notice.user?.name || 'Unknown author'}</p>
+                          <p className="text-xs text-[var(--color-text-soft)]">{relativeDate(notice.createdAt)}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 mb-2">
                         <StatusBadge status={notice.type} />
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                        <span className="ui-status-badge ui-status-neutral px-2.5 py-1 text-[11px] font-medium">
                           {buildNoticeTargetSummary(notice)}
                         </span>
-                        <span className="text-xs text-gray-400">{new Date(notice.createdAt).toLocaleDateString()}</span>
+                        <span className="text-xs text-[var(--color-text-soft)]">{new Date(notice.createdAt).toLocaleDateString()}</span>
                       </div>
-                      <h3 className="font-semibold text-gray-800 mb-2">{notice.title}</h3>
-                      <p className={`text-sm text-gray-500 ${expandedNoticeIds.includes(notice.id) ? '' : 'line-clamp-2'}`}>{notice.content}</p>
+                      <h3 className="mb-2 font-semibold text-[var(--color-heading)]">{notice.title}</h3>
+                      <p className={`text-sm text-[var(--color-text-muted)] ${expandedNoticeIds.includes(notice.id) ? '' : 'line-clamp-2'}`}>{notice.content}</p>
                       {notice.content.length > 140 ? (
                         <button
                           type="button"
@@ -277,13 +277,13 @@ const Notices = () => {
                     <div className="flex gap-2 ml-4">
                       <button
                         onClick={() => openEditModal(notice)}
-                        className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-lg hover:bg-blue-100 transition"
+                        className="grade-merit rounded-lg border px-3 py-1 text-xs transition"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => setNoticeToDelete(notice)}
-                        className="text-xs bg-red-50 text-red-600 px-3 py-1 rounded-lg hover:bg-red-100 transition"
+                        className="status-absent rounded-lg border px-3 py-1 text-xs transition"
                       >
                         Delete
                       </button>
@@ -381,7 +381,7 @@ const Notices = () => {
                     type="text"
                     value={values.targetDepartment || 'Managed automatically for your department'}
                     disabled
-                    className="ui-form-input bg-slate-100 text-slate-500"
+                    className="ui-form-input"
                   />
                 ) : (
                   <select
@@ -404,7 +404,7 @@ const Notices = () => {
                   value={values.targetSemester}
                   onChange={handleChange}
                   disabled={values.audience === 'INSTRUCTORS_ONLY'}
-                  className="ui-form-input disabled:bg-slate-100 disabled:text-slate-500"
+                  className="ui-form-input"
                 >
                   <option value="">All Semesters</option>
                   {Array.from({ length: 12 }, (_, index) => index + 1).map((semester) => (
@@ -417,13 +417,13 @@ const Notices = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50"
+                  className="flex-1 rounded-lg border border-[var(--color-card-border)] py-2 text-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 font-medium"
+                  className="ui-role-fill flex-1 rounded-lg py-2 text-sm font-medium"
                 >
                   {editNotice ? 'Update' : 'Post Notice'}
                 </button>

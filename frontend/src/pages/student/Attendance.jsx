@@ -12,10 +12,17 @@ import EmptyState from '../../components/EmptyState'
 import { useToast } from '../../components/Toast'
 import logger from '../../utils/logger'
 import { canUseCameraQrScanner, detectQrFromVideo, getQrScanIntervalMs } from '../../utils/qrScanner'
+import { isRequestCanceled } from '../../utils/http'
 
 const ringTone = (percentage) => {
   if (percentage >= 75) return 'var(--color-role-instructor)'
   if (percentage >= 50) return 'var(--color-role-gate)'
+  return '#ef4444'
+}
+
+const progressTone = (percentage) => {
+  if (percentage >= 75) return 'var(--color-role-instructor)'
+  if (percentage >= 50) return '#f97316'
   return '#ef4444'
 }
 
@@ -60,12 +67,13 @@ const StudentAttendance = () => {
   const detectorRef = useRef(null)
   const canvasRef = useRef(null)
 
-  const fetchAttendance = useCallback(async () => {
+  const fetchAttendance = useCallback(async (signal) => {
     try {
+      setLoading(true)
       setError('')
       const [attendanceResult, ticketsResult] = await Promise.allSettled([
-        api.get(`/attendance/my?page=${page}&limit=${limit}`),
-        api.get('/attendance/tickets/my')
+        api.get(`/attendance/my?page=${page}&limit=${limit}`, { signal }),
+        api.get('/attendance/tickets/my', { signal })
       ])
 
       if (attendanceResult.status !== 'fulfilled') {
@@ -79,14 +87,19 @@ const StudentAttendance = () => {
       if (ticketsResult.status === 'fulfilled') {
         setPendingTicketCount(ticketsResult.value.data.absencesWithoutTicket?.length || 0)
       } else {
-        logger.error(ticketsResult.reason)
+        if (!isRequestCanceled(ticketsResult.reason)) {
+          logger.error(ticketsResult.reason)
+        }
         setPendingTicketCount(0)
       }
     } catch (fetchError) {
+      if (isRequestCanceled(fetchError)) return
       logger.error(fetchError)
       setError(fetchError.response?.data?.message || 'Unable to load attendance')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [limit, page])
 
@@ -209,7 +222,9 @@ const StudentAttendance = () => {
   }, [scannerSupported, stopScanner, submitDailyQr, submittingScan])
 
   useEffect(() => {
-    void fetchAttendance()
+    const controller = new AbortController()
+    void fetchAttendance(controller.signal)
+    return () => controller.abort()
   }, [fetchAttendance])
 
   useEffect(() => {
@@ -250,22 +265,22 @@ const StudentAttendance = () => {
         <Alert type="error" message={error} />
 
         {pendingTicketCount > 0 ? (
-          <div className="mb-6 rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4">
+          <div className="status-late mb-6 rounded-2xl border px-5 py-4">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-amber-600 shadow-sm">
+                <div className="ui-card mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl shadow-sm">
                   <AlertCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="font-semibold text-amber-900">You have {pendingTicketCount} absence ticket{pendingTicketCount === 1 ? '' : 's'} waiting.</p>
-                  <p className="mt-1 text-sm text-amber-700">
+                  <p className="font-semibold">You have {pendingTicketCount} absence ticket{pendingTicketCount === 1 ? '' : 's'} waiting.</p>
+                  <p className="mt-1 text-sm">
                     These absences were auto-recorded after the scan window closed. Open your requests page to add the reason.
                   </p>
                 </div>
               </div>
               <Link
                 to="/student/requests"
-                className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-white px-4 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100"
+                className="status-late inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition"
               >
                 <FileText className="h-4 w-4" />
                 <span>Review Requests</span>
@@ -274,11 +289,11 @@ const StudentAttendance = () => {
           </div>
         ) : null}
 
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
+        <div className="ui-card rounded-2xl p-6 mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">Live Gate QR Attendance</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-lg font-semibold text-[var(--color-heading)]">Live Gate QR Attendance</h2>
+              <p className="text-sm text-[var(--color-text-muted)] mt-1">
                 Scan the active Student QR during the time slot assigned to your semester. The code rotates every minute and works only for today.
               </p>
             </div>
@@ -287,7 +302,7 @@ const StudentAttendance = () => {
                 type="button"
                 onClick={startScanner}
                 disabled={submittingScan}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm font-medium disabled:opacity-50"
+                className="ui-role-fill px-4 py-2 rounded-lg transition text-sm font-medium disabled:opacity-50"
               >
                 Start Scanner
               </button>
@@ -298,14 +313,14 @@ const StudentAttendance = () => {
                   setScannerOpen(false)
                   setScannerStatus('Scanner stopped.')
                 }}
-                className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
+                className="rounded-lg border border-[var(--color-card-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-muted)]"
               >
                 Stop
               </button>
             </div>
           </div>
 
-          <p className="text-xs text-gray-500 mt-4">{scannerStatus}</p>
+          <p className="text-xs text-[var(--color-text-muted)] mt-4">{scannerStatus}</p>
 
           {scannerOpen && (
             <div className="mt-4 overflow-hidden rounded-2xl border bg-black">
@@ -313,20 +328,20 @@ const StudentAttendance = () => {
             </div>
           )}
 
-          <div className="mt-5 pt-5 border-t">
-            <label className="block text-sm text-gray-600 mb-2">Manual QR Data</label>
+          <div className="mt-5 border-t border-[var(--color-card-border)] pt-5">
+            <label className="mb-2 block text-sm text-[var(--color-text-muted)]">Manual QR Data</label>
             <textarea
               rows={4}
               value={manualQrData}
               onChange={(e) => setManualQrData(e.target.value)}
               placeholder="If your phone browser cannot scan live, paste the QR payload here."
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="ui-form-input"
             />
             <button
               type="button"
               onClick={() => submitDailyQr(manualQrData)}
               disabled={!manualQrData.trim() || submittingScan}
-              className="mt-3 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-black transition text-sm font-medium disabled:opacity-50"
+              className="ui-role-fill mt-3 px-4 py-2 rounded-lg transition text-sm font-medium disabled:opacity-50"
             >
               {submittingScan ? 'Submitting...' : 'Submit QR'}
             </button>
@@ -342,8 +357,8 @@ const StudentAttendance = () => {
                 <div key={index} className="ui-card rounded-2xl p-6">
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-gray-800">{item.subject}</h3>
-                      <p className="text-xs text-gray-500">{item.code}</p>
+                      <h3 className="font-semibold text-[var(--color-heading)]">{item.subject}</h3>
+                      <p className="text-xs text-[var(--color-text-muted)]">{item.code}</p>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <span className="ui-status-badge ui-status-success">{item.present} present</span>
                         <span className="ui-status-badge ui-status-danger">{item.absent} absent</span>
@@ -352,19 +367,16 @@ const StudentAttendance = () => {
                     </div>
                     <AttendanceRing percentage={item.percentage} />
                   </div>
-                  <div className="mt-5 w-full rounded-full bg-gray-200 h-2">
+                  <div className="mt-5 h-2 w-full rounded-full bg-[var(--color-surface-muted)]">
                     <div
-                      className={`h-2 rounded-full ${
-                        parseFloat(item.percentage) >= 75 ? 'bg-green-500' :
-                        parseFloat(item.percentage) >= 50 ? 'bg-orange-500' :
-                        'bg-red-500'}`}
-                      style={{ width: item.percentage }}
+                      className="h-2 rounded-full"
+                      style={{ width: item.percentage, backgroundColor: progressTone(parseFloat(item.percentage)) }}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-3">
+                  <p className="mt-3 text-xs text-[var(--color-text-muted)]">
                     {item.present} present out of {item.total} classes
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="mt-1 text-xs text-[var(--color-text-soft)]">
                     {item.absent} absent • {item.late} late
                   </p>
                 </div>
@@ -381,14 +393,14 @@ const StudentAttendance = () => {
             </div>
 
             {attendance.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="p-6 border-b">
-                  <h2 className="text-lg font-semibold text-gray-800">Detailed Records</h2>
+              <div className="ui-card overflow-hidden rounded-2xl">
+                <div className="border-b border-[var(--color-card-border)] p-6">
+                  <h2 className="text-lg font-semibold text-[var(--color-heading)]">Detailed Records</h2>
                 </div>
                 <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px]">
-                  <thead className="bg-gray-50">
-                    <tr className="text-left text-sm text-gray-500">
+                  <thead className="bg-[var(--color-surface-muted)]">
+                    <tr className="text-left text-sm text-[var(--color-text-muted)]">
                       <th className="px-6 py-4">Subject</th>
                       <th className="px-6 py-4">Date</th>
                       <th className="px-6 py-4">Status</th>
@@ -396,12 +408,12 @@ const StudentAttendance = () => {
                   </thead>
                   <tbody>
                     {attendance.map((record) => (
-                      <tr key={record.id} className="border-t hover:bg-gray-50">
+                      <tr key={record.id} className="border-t border-[var(--color-card-border)] hover:bg-[var(--color-surface-muted)]">
                         <td className="px-6 py-4">
-                          <p className="font-medium text-gray-800 text-sm">{record.subject?.name}</p>
-                          <p className="text-xs text-gray-500">{record.subject?.code}</p>
+                          <p className="text-sm font-medium text-[var(--color-heading)]">{record.subject?.name}</p>
+                          <p className="text-xs text-[var(--color-text-muted)]">{record.subject?.code}</p>
                         </td>
-                        <td className="px-6 py-4 text-gray-500 text-sm">
+                        <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">
                           {new Date(record.date).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4">

@@ -190,11 +190,11 @@ const Assignments = () => {
         <Alert type="error" message={error} />
 
         <div className="mb-6 rounded-2xl bg-white p-4 shadow-sm">
-          <label className="mb-2 block text-sm text-gray-600">Module</label>
+          <label className="mb-2 block text-sm text-[var(--color-text-muted)]">Module</label>
           <select
             value={selectedSubject}
             onChange={(event) => setSelectedSubject(event.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="ui-form-input"
           >
             <option value="">All Modules</option>
             {subjects.map((subject) => (
@@ -214,13 +214,13 @@ const Assignments = () => {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="flex-1">
                     <div className="mb-2 flex items-center gap-3">
-                      <h3 className="font-semibold text-gray-800">{assignment.title}</h3>
+                      <h3 className="font-semibold text-[var(--color-heading)]">{assignment.title}</h3>
                       {isOverdue(assignment.dueDate) && (
                         <span className="status-absent rounded-full px-2 py-0.5 text-xs">Overdue</span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 mb-3">{assignment.description}</p>
-                    <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+                    <p className="mb-3 text-sm text-[var(--color-text-muted)]">{assignment.description}</p>
+                    <div className="flex flex-wrap gap-4 text-xs text-[var(--color-text-muted)]">
                       <span>📚 {assignment.subject?.name}</span>
                       <span>📅 Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
                       <span>🎯 Total: {assignment.totalMarks} marks</span>
@@ -229,7 +229,7 @@ const Assignments = () => {
                         <button
                           type="button"
                           onClick={() => openPreview(`${assignment.title} - Question PDF`, assignment.questionPdfUrl)}
-                          className="text-green-600 font-medium hover:underline"
+                          className="font-medium text-[var(--color-role-accent)] hover:underline"
                         >
                           View Question PDF
                         </button>
@@ -243,19 +243,19 @@ const Assignments = () => {
                         const res = await api.get(`/assignments/${assignment.id}`)
                         setShowSubmissions(res.data.assignment)
                       }}
-                      className="text-xs bg-green-50 text-green-600 px-3 py-2 rounded-lg hover:bg-green-100"
+                      className="status-present rounded-lg border px-3 py-2 text-xs"
                     >
                       View Submissions
                     </button>
                     <button
                       onClick={() => handleExport(assignment.id, 'xlsx')}
-                      className="text-xs bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg hover:bg-emerald-100"
+                      className="grade-merit rounded-lg border px-3 py-2 text-xs"
                     >
                       {exportingAssignmentId === `${assignment.id}:xlsx` ? 'Exporting...' : 'Export Excel'}
                     </button>
                     <button
                       onClick={() => handleExport(assignment.id, 'pdf')}
-                      className="text-xs bg-slate-100 text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-200"
+                      className="ui-status-badge ui-status-neutral px-3 py-2 text-xs"
                     >
                       {exportingAssignmentId === `${assignment.id}:pdf` ? 'Exporting...' : 'Export PDF'}
                     </button>
@@ -285,7 +285,7 @@ const Assignments = () => {
               required
               value={form.title}
               onChange={(event) => setForm({ ...form, title: event.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="ui-form-input"
             />
             <textarea
               placeholder="Description"
@@ -293,13 +293,13 @@ const Assignments = () => {
               rows={3}
               value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="ui-form-input"
             />
             <select
               required
               value={form.subjectId}
               onChange={(event) => setForm({ ...form, subjectId: event.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="ui-form-input"
             >
               <option value="">Select Module</option>
               {subjects.map((subject) => (
@@ -314,38 +314,38 @@ const Assignments = () => {
                 required
                 value={form.dueDate}
                 onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="ui-form-input"
               />
               <input
                 type="number"
                 placeholder="Total Marks"
                 value={form.totalMarks}
                 onChange={(event) => setForm({ ...form, totalMarks: parseInt(event.target.value, 10) || 0 })}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="ui-form-input"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Question PDF</label>
+              <label className="mb-1 block text-sm text-[var(--color-text-muted)]">Question PDF</label>
               <input
                 type="file"
                 accept="application/pdf,.pdf"
                 required
                 onChange={(event) => setQuestionPdf(event.target.files?.[0] || null)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm"
+                className="ui-form-input"
               />
-              <p className="text-xs text-gray-400 mt-1">Upload the assignment question as a PDF.</p>
+              <p className="mt-1 text-xs text-[var(--color-text-soft)]">Upload the assignment question as a PDF.</p>
             </div>
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50"
+                className="flex-1 rounded-lg border border-[var(--color-card-border)] py-2 text-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 font-medium"
+                className="ui-role-fill flex-1 rounded-lg py-2 text-sm font-medium"
               >
                 Create
               </button>
@@ -358,8 +358,8 @@ const Assignments = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 w-full max-w-3xl shadow-xl max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Submissions — {showSubmissions.title}</h2>
-              <button onClick={() => setShowSubmissions(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+              <h2 className="text-xl font-bold text-[var(--color-heading)]">Submissions — {showSubmissions.title}</h2>
+              <button onClick={() => setShowSubmissions(null)} className="text-xl text-[var(--color-text-soft)] hover:text-[var(--color-text-muted)]">✕</button>
             </div>
             <div className="space-y-4">
               {showSubmissions.submissions?.length === 0 && (
@@ -374,18 +374,18 @@ const Assignments = () => {
                 <div key={submission.id} className="border rounded-xl p-4">
                   <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-800">{submission.student?.user?.name}</p>
-                      <p className="text-sm text-gray-500 mt-1">{submission.note || 'No note'}</p>
+                      <p className="font-medium text-[var(--color-heading)]">{submission.student?.user?.name}</p>
+                      <p className="mt-1 text-sm text-[var(--color-text-muted)]">{submission.note || 'No note'}</p>
                       {submission.fileUrl && (
                         <button
                           type="button"
                           onClick={() => openPreview(`${submission.student?.user?.name || 'Student'} - Answer PDF`, submission.fileUrl)}
-                          className="text-sm text-green-600 hover:underline mt-2 inline-block"
+                          className="mt-2 inline-block text-sm text-[var(--color-role-accent)] hover:underline"
                         >
                           View Answer PDF
                         </button>
                       )}
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="mt-1 text-xs text-[var(--color-text-soft)]">
                         Submitted: {new Date(submission.submittedAt).toLocaleDateString()}
                       </p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block ${
@@ -400,7 +400,7 @@ const Assignments = () => {
                       </span>
 
                       {submission.feedback && (
-                        <div className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                        <div className="grade-merit mt-3 rounded-lg px-3 py-2 text-sm">
                           Feedback sent to student: {submission.feedback}
                         </div>
                       )}
@@ -408,11 +408,11 @@ const Assignments = () => {
 
                     <div className="flex flex-col gap-2">
                       {submission.status === 'GRADED' ? (
-                        <div className="rounded-lg bg-emerald-50 px-3 py-2 text-right">
-                          <span className="text-sm font-bold text-emerald-700">
+                        <div className="status-present rounded-lg px-3 py-2 text-right">
+                          <span className="text-sm font-bold">
                             {submission.obtainedMarks}/{showSubmissions.totalMarks}
                           </span>
-                          <p className="mt-1 text-xs text-slate-500">Visible to instructors and coordinators only.</p>
+                          <p className="mt-1 text-xs text-[var(--color-text-muted)]">Visible to instructors and coordinators only.</p>
                         </div>
                       ) : (
                         <>
@@ -422,17 +422,17 @@ const Assignments = () => {
                             min="0"
                             max={showSubmissions.totalMarks}
                             id={`grade-${submission.id}`}
-                            className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-sm"
+                            className="ui-form-input w-24 px-2 py-1 text-sm"
                           />
                           <textarea
                             placeholder="Feedback for student"
                             rows={3}
                             id={`feedback-${submission.id}`}
-                            className="w-64 border border-gray-300 rounded-lg px-2 py-1 text-sm"
+                            className="ui-form-input w-64 px-2 py-1 text-sm"
                           />
                           <button
                             onClick={() => handleGrade(submission.id)}
-                            className="bg-green-600 text-white px-3 py-2 rounded-lg text-xs hover:bg-green-700"
+                            className="ui-role-fill rounded-lg px-3 py-2 text-xs"
                           >
                             Save Marks And Feedback
                           </button>
@@ -451,20 +451,20 @@ const Assignments = () => {
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-2xl w-full max-w-5xl h-[85vh] shadow-xl flex flex-col overflow-hidden">
             <div className="flex justify-between items-center px-6 py-4 border-b">
-              <h2 className="text-lg font-semibold text-gray-800">{previewFile.title}</h2>
+              <h2 className="text-lg font-semibold text-[var(--color-heading)]">{previewFile.title}</h2>
               <div className="flex items-center gap-3">
                 <a
                   href={previewFile.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-green-600 hover:underline"
+                  className="text-sm text-[var(--color-role-accent)] hover:underline"
                 >
                   Open in new tab
                 </a>
                 <button
                   type="button"
                   onClick={() => setPreviewFile(null)}
-                  className="text-gray-400 hover:text-gray-600 text-xl"
+                  className="text-xl text-[var(--color-text-soft)] hover:text-[var(--color-text-muted)]"
                 >
                   ✕
                 </button>

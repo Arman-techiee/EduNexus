@@ -261,14 +261,14 @@ const Marks = () => {
 
         <div className="mb-6 grid gap-4 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm text-gray-600">{isCoordinator ? 'Module Filter' : 'Module'}</label>
+            <label className="mb-2 block text-sm text-[var(--color-text-muted)]">{isCoordinator ? 'Module Filter' : 'Module'}</label>
             <select
               value={selectedSubject}
               onChange={(event) => {
                 setSelectedSubject(event.target.value)
                 setPage(1)
               }}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="ui-form-input"
             >
               <option value="">{isCoordinator ? 'All Department Modules' : 'Select a module'}</option>
               {subjects.map((subject) => (
@@ -279,14 +279,14 @@ const Marks = () => {
             </select>
           </div>
           <div>
-            <label className="mb-2 block text-sm text-gray-600">Exam Result Type</label>
+            <label className="mb-2 block text-sm text-[var(--color-text-muted)]">Exam Result Type</label>
             <select
               value={selectedExamType}
               onChange={(event) => {
                 setSelectedExamType(event.target.value)
                 setPage(1)
               }}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="ui-form-input"
             >
               <option value="">All Exam Types</option>
               {examTypes.map((examType) => (
@@ -300,33 +300,33 @@ const Marks = () => {
 
         <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-4">
           <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-sm text-gray-500">Records</p>
-            <p className="mt-1 text-2xl font-bold text-gray-800">{stats.total || total}</p>
+            <p className="text-sm text-[var(--color-text-muted)]">Records</p>
+            <p className="mt-1 text-2xl font-bold text-[var(--color-heading)]">{stats.total || total}</p>
           </div>
           <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-sm text-gray-500">Published</p>
-            <p className="mt-1 text-2xl font-bold text-green-600">{stats.published || 0}</p>
+            <p className="text-sm text-[var(--color-text-muted)]">Published</p>
+            <p className="status-present mt-1 inline-flex rounded-lg px-3 py-1 text-2xl font-bold">{stats.published || 0}</p>
           </div>
           <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-sm text-gray-500">Unpublished</p>
-            <p className="mt-1 text-2xl font-bold text-amber-600">{stats.unpublished || 0}</p>
+            <p className="text-sm text-[var(--color-text-muted)]">Unpublished</p>
+            <p className="status-late mt-1 inline-flex rounded-lg px-3 py-1 text-2xl font-bold">{stats.unpublished || 0}</p>
           </div>
           <div className="bg-white rounded-2xl shadow-sm p-5">
-            <p className="text-sm text-gray-500">Practical Visibility</p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">Staff only</p>
-            <p className="mt-1 text-xs text-slate-500">Students never see practical marks</p>
+            <p className="text-sm text-[var(--color-text-muted)]">Practical Visibility</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--color-heading)]">Staff only</p>
+            <p className="mt-1 text-xs text-[var(--color-text-muted)]">Students never see practical marks</p>
           </div>
         </div>
 
         {stats.byExamType?.length > 0 && (
           <div className="mb-6 rounded-2xl bg-white p-5 shadow-sm">
-            <p className="mb-4 text-sm font-semibold text-slate-700">Exam Result Publishing Status</p>
+            <p className="mb-4 text-sm font-semibold text-[var(--color-heading)]">Exam Result Publishing Status</p>
             <div className="grid gap-3 md:grid-cols-4">
               {stats.byExamType.map((item) => (
-                <div key={item.examType} className="rounded-xl border border-slate-200 p-4">
-                  <p className="text-sm font-semibold text-slate-900">{examTypeLabels[item.examType] || item.examType}</p>
-                  <p className="mt-2 text-xs text-slate-500">{item.count} records</p>
-                  <p className="mt-1 text-xs text-green-600">{item.published} published</p>
+                <div key={item.examType} className="rounded-xl border border-[var(--color-card-border)] p-4">
+                  <p className="text-sm font-semibold text-[var(--color-heading)]">{examTypeLabels[item.examType] || item.examType}</p>
+                  <p className="mt-2 text-xs text-[var(--color-text-muted)]">{item.count} records</p>
+                  <p className="status-present mt-1 inline-flex rounded-lg px-2 py-1 text-xs">{item.published} published</p>
                 </div>
               ))}
             </div>
@@ -349,12 +349,12 @@ const Marks = () => {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between px-6 py-4 border-b bg-slate-50">
+                <div className="flex items-center justify-between border-b border-[var(--color-card-border)] bg-[var(--color-surface-muted)] px-6 py-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-800">
+                    <h2 className="text-lg font-semibold text-[var(--color-heading)]">
                       {isCoordinator ? 'Department Exam Result Review' : 'Module Exam Mark Ledger'}
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                       {isCoordinator
                         ? 'Review marks by exam result type before publishing them for students.'
                         : 'Every mark stays internal until a coordinator publishes the matching exam result.'}
@@ -364,8 +364,8 @@ const Marks = () => {
                 </div>
                 <div className="overflow-x-auto max-h-[720px]">
                   <table className="w-full min-w-[1100px]">
-                    <thead className="sticky top-0 z-10 bg-slate-50">
-                      <tr className="text-left text-sm text-gray-500">
+                    <thead className="sticky top-0 z-10 bg-[var(--color-surface-muted)]">
+                      <tr className="text-left text-sm text-[var(--color-text-muted)]">
                         <th className="px-6 py-4">Student</th>
                         <th className="px-6 py-4">Module</th>
                         <th className="px-6 py-4">Exam Type</th>
@@ -378,19 +378,19 @@ const Marks = () => {
                     </thead>
                     <tbody>
                       {marks.map((mark) => (
-                        <tr key={mark.id} className="border-t border-slate-200 transition-colors hover:bg-blue-50/30">
+                        <tr key={mark.id} className="border-t border-[var(--color-card-border)] transition-colors hover:bg-[var(--color-surface-muted)]/70">
                           <td className="px-6 py-4">
-                            <p className="font-semibold text-slate-900">{mark.student?.user?.name}</p>
-                            <p className="mt-1 text-xs text-slate-500">{mark.student?.rollNumber || mark.student?.user?.email}</p>
+                            <p className="font-semibold text-[var(--color-heading)]">{mark.student?.user?.name}</p>
+                            <p className="mt-1 text-xs text-[var(--color-text-muted)]">{mark.student?.rollNumber || mark.student?.user?.email}</p>
                           </td>
                           <td className="px-6 py-4">
-                            <p className="font-medium text-slate-900">{mark.subject?.name}</p>
-                            <p className="mt-1 text-xs text-slate-500">{mark.subject?.code}</p>
+                            <p className="font-medium text-[var(--color-heading)]">{mark.subject?.name}</p>
+                            <p className="mt-1 text-xs text-[var(--color-text-muted)]">{mark.subject?.code}</p>
                           </td>
-                          <td className="px-6 py-4 text-slate-700">{examTypeLabels[mark.examType] || mark.examType}</td>
-                          <td className="px-6 py-4 text-gray-700 font-medium">{mark.obtainedMarks}/{mark.totalMarks}</td>
-                          <td className="px-6 py-4 text-gray-700 font-medium">{mark.percentage.toFixed(1)}%</td>
-                          <td className="px-6 py-4 text-gray-700 font-medium">{mark.grade}</td>
+                          <td className="px-6 py-4 text-[var(--color-text-muted)]">{examTypeLabels[mark.examType] || mark.examType}</td>
+                          <td className="px-6 py-4 font-medium text-[var(--color-text-muted)]">{mark.obtainedMarks}/{mark.totalMarks}</td>
+                          <td className="px-6 py-4 font-medium text-[var(--color-text-muted)]">{mark.percentage.toFixed(1)}%</td>
+                          <td className="px-6 py-4 font-medium text-[var(--color-text-muted)]">{mark.grade}</td>
                           <td className="px-6 py-4">
                             <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                               mark.isPublished ? 'status-present' : 'status-late'
@@ -399,7 +399,7 @@ const Marks = () => {
                               {mark.isPublished ? 'Published' : 'Hidden'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-gray-500 text-sm">{mark.remarks || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">{mark.remarks || '-'}</td>
                         </tr>
                       ))}
                       {marks.length === 0 && (
@@ -435,7 +435,7 @@ const Marks = () => {
                 setForm({ ...form, examType: event.target.value })
                 setDraftMarks({})
               }}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="ui-form-input"
             >
               {examTypes.map((examType) => (
                 <option key={examType} value={examType}>
@@ -450,7 +450,7 @@ const Marks = () => {
                 setForm({ ...form, subjectId: event.target.value })
                 setDraftMarks({})
               }}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="ui-form-input"
             >
               <option value="">Select Module</option>
               {subjects.map((subject) => (
@@ -463,20 +463,20 @@ const Marks = () => {
               required
               value={form.totalMarks}
               onChange={(event) => setForm({ ...form, totalMarks: event.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="ui-form-input"
             />
             {form.subjectId ? (
               students.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+                <div className="rounded-lg border border-dashed border-[var(--color-card-border)] px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">
                   No enrolled students found for this module.
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
                   {students.map((student) => (
-                    <div key={student.id} className="rounded-xl border border-slate-200 p-4">
+                    <div key={student.id} className="rounded-xl border border-[var(--color-card-border)] p-4">
                       <div className="mb-3">
-                        <p className="font-semibold text-slate-900">{student.name}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="font-semibold text-[var(--color-heading)]">{student.name}</p>
+                        <p className="text-xs text-[var(--color-text-muted)]">
                           {student.rollNumber} • Semester {student.semester}{student.section ? ` • Section ${student.section}` : ''}
                         </p>
                       </div>
@@ -494,7 +494,7 @@ const Marks = () => {
                               obtainedMarks: event.target.value
                             }
                           }))}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="ui-form-input"
                         />
                         <input
                           type="text"
@@ -507,7 +507,7 @@ const Marks = () => {
                               remarks: event.target.value
                             }
                           }))}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="ui-form-input"
                         />
                       </div>
                     </div>
@@ -515,7 +515,7 @@ const Marks = () => {
                 </div>
               )
             ) : null}
-            <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="status-late rounded-lg px-4 py-3 text-sm">
               {form.examType === 'PRACTICAL'
                 ? 'Practical marks will remain visible only to instructors and coordinators.'
                 : 'Students can only view this result after the coordinator publishes the matching exam result.'}
@@ -524,13 +524,13 @@ const Marks = () => {
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50"
+                className="flex-1 rounded-lg border border-[var(--color-card-border)] py-2 text-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 font-medium"
+                className="ui-role-fill flex-1 rounded-lg py-2 text-sm font-medium"
               >
                 Save Mark
               </button>
