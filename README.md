@@ -122,16 +122,17 @@ EduNexus is a full-stack campus management system for semester-based colleges. I
 ## Key API Groups
 
 - `/api/auth`
-- `/api/admin`
-- `/api/departments`
-- `/api/subjects`
-- `/api/routines`
-- `/api/attendance`
-- `/api/assignments`
-- `/api/materials`
-- `/api/marks`
-- `/api/notices`
-- `/api/notifications`
+- `/api/v1/auth`
+- `/api/v1/admin`
+- `/api/v1/departments`
+- `/api/v1/subjects`
+- `/api/v1/routines`
+- `/api/v1/attendance`
+- `/api/v1/assignments`
+- `/api/v1/materials`
+- `/api/v1/marks`
+- `/api/v1/notices`
+- `/api/v1/notifications`
 
 ## Local Setup
 
@@ -193,8 +194,13 @@ Notes:
 Create `frontend/.env`:
 
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5000/api/v1
 ```
+
+Frontend auth bootstrap note:
+
+- `AuthProvider` restores sessions with `POST /api/v1/auth/refresh` on protected app routes.
+- Public auth pages like `/login`, `/forgot-password`, `/reset-password`, and `/student-intake` now skip that silent refresh call so a missing refresh cookie does not spam expected `401` requests in the browser console.
 
 ### 3. Run database migrations
 
@@ -230,7 +236,7 @@ npm run dev
 Default local URLs:
 
 - Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:5000/api`
+- Backend API: `http://localhost:5000/api/v1`
 - Health: `http://localhost:5000/health`
 
 ## Scripts

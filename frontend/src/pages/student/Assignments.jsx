@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import StudentLayout from '../../layouts/StudentLayout'
+import Alert from '../../components/Alert'
 import EmptyState from '../../components/EmptyState'
 import LoadingSkeleton from '../../components/LoadingSkeleton'
 import PageHeader from '../../components/PageHeader'
@@ -14,14 +15,15 @@ const StudentAssignments = () => {
   const [submitForm, setSubmitForm] = useState({ note: '' })
   const [answerPdf, setAnswerPdf] = useState(null)
   const [submittingId, setSubmittingId] = useState(null)
-  const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [submitError, setSubmitError] = useState('')
   const { showToast } = useToast()
   const [previewFile, setPreviewFile] = useState(null)
 
   const openPreview = (title, fileUrl) => {
     const resolvedUrl = resolveFileUrl(fileUrl)
     if (!resolvedUrl) {
-      setError('This file preview is unavailable because the file link is invalid.')
+      setSubmitError('This file preview is unavailable because the file link is invalid.')
       return
     }
 
@@ -36,6 +38,7 @@ const StudentAssignments = () => {
 
   const fetchData = async (signal) => {
     try {
+      setLoadError('')
       const [assignmentsRes, submissionsRes] = await Promise.all([
         api.get('/assignments', { signal }),
         api.get('/assignments/my-submissions', { signal }),
@@ -45,6 +48,7 @@ const StudentAssignments = () => {
     } catch (error) {
       if (isRequestCanceled(error)) return
       logger.error('Failed to load student assignments', error)
+      setLoadError(error.response?.data?.message || 'Unable to load assignments right now.')
     } finally {
       if (!signal?.aborted) {
         setLoading(false)
@@ -57,9 +61,9 @@ const StudentAssignments = () => {
   }
 
   const handleSubmit = async (assignmentId) => {
-    setError('')
+    setSubmitError('')
     if (!answerPdf) {
-      setError('Please upload your answer PDF')
+      setSubmitError('Please upload your answer PDF')
       return
     }
     try {
@@ -74,7 +78,7 @@ const StudentAssignments = () => {
       setAnswerPdf(null)
       void fetchData()
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong')
+      setSubmitError(err.response?.data?.message || 'Something went wrong')
     }
   }
 
@@ -89,7 +93,7 @@ const StudentAssignments = () => {
           breadcrumbs={['Student', 'Assignments']}
         />
 
-        {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
+        <Alert type="error" message={loadError} />
 
         {loading ? (
           <LoadingSkeleton rows={4} itemClassName="h-40" />
@@ -145,6 +149,7 @@ const StudentAssignments = () => {
                     <div className="mt-4 pt-4 border-t">
                       {submittingId === assignment.id ? (
                         <div className="space-y-3">
+                          <Alert type="error" message={submittingId === assignment.id ? submitError : ''} />
                           <textarea
                             placeholder="Add a note (optional)"
                             rows={2}
@@ -163,7 +168,7 @@ const StudentAssignments = () => {
                           </div>
                           <div className="flex gap-3">
                             <button
-                              onClick={() => { setSubmittingId(null); setAnswerPdf(null) }}
+                              onClick={() => { setSubmittingId(null); setAnswerPdf(null); setSubmitError('') }}
                               className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50"
                             >
                               Cancel
@@ -178,7 +183,7 @@ const StudentAssignments = () => {
                         </div>
                       ) : (
                         <button
-                          onClick={() => { setSubmittingId(assignment.id); setError('') }}
+                          onClick={() => { setSubmittingId(assignment.id); setSubmitError('') }}
                           className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition"
                         >
                           Submit Assignment

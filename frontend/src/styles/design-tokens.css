@@ -207,6 +207,44 @@ html[data-theme="dark"] {
   --color-badge-dot: #94a3b8;
 }
 
+@utility status-present {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: color-mix(in srgb, #10b981 22%, transparent);
+}
+
+@utility status-absent {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: color-mix(in srgb, #ef4444 22%, transparent);
+}
+
+@utility status-late {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: color-mix(in srgb, #f97316 22%, transparent);
+}
+
+@utility grade-pass {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+@utility grade-merit {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+@utility grade-average {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+@utility grade-fail {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 @utility ui-role-accent-admin {
   --color-role-accent: var(--color-role-admin);
 }

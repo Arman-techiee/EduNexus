@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Pencil, Plus, QrCode, Trash2 } from 'lucide-react'
 import AdminLayout from '../../layouts/AdminLayout'
 import CoordinatorLayout from '../../layouts/CoordinatorLayout'
@@ -10,6 +10,7 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../utils/api'
 import logger from '../../utils/logger'
+import { isRequestCanceled } from '../../utils/http'
 
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
 const SEMESTERS = Array.from({ length: 12 }, (_, index) => index + 1)
@@ -57,24 +58,29 @@ const StudentQrSettings = () => {
     }))
   ), [windows])
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async (signal) => {
     try {
       setLoading(true)
       setError('')
-      const res = await api.get('/attendance/gate-settings')
+      const res = await api.get('/attendance/gate-settings', { signal })
       setWindows(res.data.windows || [])
       setHolidays(res.data.holidays || [])
     } catch (requestError) {
+      if (isRequestCanceled(requestError)) return
       logger.error(requestError)
       setError(requestError.response?.data?.message || 'Unable to load Student QR settings')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
-  }
+  }, [])
 
   useEffect(() => {
-    void loadSettings()
-  }, [])
+    const controller = new AbortController()
+    void loadSettings(controller.signal)
+    return () => controller.abort()
+  }, [loadSettings])
 
   const openCreateWindow = () => {
     setWindowForm(defaultWindowForm)

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   API_BASE_URL,
   clearAuthState,
@@ -11,9 +11,11 @@ import {
 } from '../utils/api'
 
 const AuthContext = createContext()
+const PUBLIC_AUTH_ROUTES = new Set(['/login', '/forgot-password', '/reset-password', '/student-intake'])
 
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate()
+  const location = useLocation()
   const [user, setUser] = useState(getAuthState().user)
   const [token, setToken] = useState(getAuthState().token)
   const [loading, setLoading] = useState(true)
@@ -32,6 +34,15 @@ export const AuthProvider = ({ children }) => {
       navigate('/login', { replace: true })
     })
 
+    if (PUBLIC_AUTH_ROUTES.has(location.pathname)) {
+      setLoading(false)
+      return () => {
+        isMounted = false
+        unsubscribe()
+        unregisterUnauthorizedHandler()
+      }
+    }
+
     refreshSession()
       .catch(() => {
         clearAuthState()
@@ -47,7 +58,7 @@ export const AuthProvider = ({ children }) => {
       unsubscribe()
       unregisterUnauthorizedHandler()
     }
-  }, [navigate])
+  }, [location.pathname, navigate])
 
   const login = (userData, userToken) => {
     setAuthState({ user: userData, token: userToken })

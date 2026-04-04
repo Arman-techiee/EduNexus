@@ -34,6 +34,20 @@ test('signRefreshToken and verifyRefreshToken round-trip refresh tokens', () => 
   assert.equal(decoded.type, 'refresh')
   assert.equal(decoded.id, 'user-9')
   assert.equal(decoded.role, 'ADMIN')
+  assert.equal(typeof decoded.jti, 'string')
+  assert.ok(decoded.jti.length > 0)
+})
+
+test('signRefreshToken generates unique tokens for rapid successive refreshes', () => {
+  process.env.JWT_SECRET = 'test-access-secret'
+  process.env.JWT_REFRESH_SECRET = 'test-refresh-secret'
+  process.env.REFRESH_TOKEN_EXPIRES_DAYS = '7'
+
+  const { signRefreshToken } = loadTokenUtils()
+  const firstToken = signRefreshToken({ id: 'user-9', role: 'ADMIN' })
+  const secondToken = signRefreshToken({ id: 'user-9', role: 'ADMIN' })
+
+  assert.notEqual(firstToken, secondToken)
 })
 
 test('hashToken is deterministic and produces a sha256 digest', () => {

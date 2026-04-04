@@ -216,7 +216,7 @@ const Assignments = () => {
                     <div className="mb-2 flex items-center gap-3">
                       <h3 className="font-semibold text-gray-800">{assignment.title}</h3>
                       {isOverdue(assignment.dueDate) && (
-                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Overdue</span>
+                        <span className="status-absent rounded-full px-2 py-0.5 text-xs">Overdue</span>
                       )}
                     </div>
                     <p className="text-sm text-gray-500 mb-3">{assignment.description}</p>
@@ -390,10 +390,10 @@ const Assignments = () => {
                       </p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block ${
                         submission.status === 'GRADED'
-                          ? 'bg-green-100 text-green-700'
+                          ? 'status-present'
                           : submission.status === 'LATE'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-blue-100 text-blue-700'
+                            ? 'status-absent'
+                            : 'grade-merit'
                       }`}
                       >
                         {submission.status}

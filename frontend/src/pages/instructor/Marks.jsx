@@ -393,7 +393,7 @@ const Marks = () => {
                           <td className="px-6 py-4 text-gray-700 font-medium">{mark.grade}</td>
                           <td className="px-6 py-4">
                             <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              mark.isPublished ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                              mark.isPublished ? 'status-present' : 'status-late'
                             }`}
                             >
                               {mark.isPublished ? 'Published' : 'Hidden'}

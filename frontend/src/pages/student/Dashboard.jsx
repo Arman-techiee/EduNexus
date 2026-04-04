@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { BellRing, BookOpenText, CalendarDays, ClipboardList, Percent } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import StudentLayout from '../../layouts/StudentLayout'
+import Alert from '../../components/Alert'
 import LoadingSkeleton from '../../components/LoadingSkeleton'
 import EmptyState from '../../components/EmptyState'
 import PageHeader from '../../components/PageHeader'
@@ -144,9 +145,7 @@ const StudentDashboard = () => {
           breadcrumbs={['Student', 'Dashboard']}
         />
 
-        {error ? (
-          <div className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
-        ) : null}
+        <Alert type="error" message={error} />
 
         <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
           {stats.map((stat) => (

@@ -27,7 +27,12 @@ const signAccessToken = (user) => jwt.sign(
 )
 
 const signRefreshToken = (user) => jwt.sign(
-  { id: user.id, role: user.role, type: 'refresh' },
+  {
+    id: user.id,
+    role: user.role,
+    type: 'refresh',
+    jti: crypto.randomUUID()
+  },
   getRefreshSecret(),
   { expiresIn: `${REFRESH_TOKEN_EXPIRES_DAYS}d` }
 )

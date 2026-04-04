@@ -18,10 +18,10 @@ const examTypeLabels = {
 }
 
 const gradeTone = (grade) => {
-  if (grade === 'A+' || grade === 'A') return 'text-green-600 bg-green-50'
-  if (grade === 'B+' || grade === 'B') return 'text-blue-600 bg-blue-50'
-  if (grade === 'C+' || grade === 'C') return 'text-amber-600 bg-amber-50'
-  return 'text-red-600 bg-red-50'
+  if (grade === 'A+' || grade === 'A') return 'grade-pass'
+  if (grade === 'B+' || grade === 'B') return 'grade-merit'
+  if (grade === 'C+' || grade === 'C') return 'grade-average'
+  return 'grade-fail'
 }
 
 const emptyResultSheet = {
